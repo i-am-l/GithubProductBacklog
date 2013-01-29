@@ -2,9 +2,10 @@
 
 #include <QVBoxLayout>
 #include <QFormLayout>
+#include <QTimer>
 
 LYGithubProductBacklogAuthenticationView::LYGithubProductBacklogAuthenticationView(QWidget *parent) :
-	QWidget(parent)
+	QDialog(parent)
 {
 	QFormLayout *fl = new QFormLayout();
 
@@ -20,11 +21,18 @@ LYGithubProductBacklogAuthenticationView::LYGithubProductBacklogAuthenticationVi
 	submitButton_ = new QPushButton("Submit");
 	submitButton_->setDefault(true);
 
-	QVBoxLayout *vl = new QVBoxLayout();
-	vl->addLayout(fl);
-	vl->addWidget(submitButton_);
+	serverInteractionProgressBar_ = new QProgressBar();
+	serverInteractionProgressBar_->setMinimumWidth(200);
 
-	setLayout(vl);
+	serverInteractionLabel_ = new QLabel();
+
+	QVBoxLayout *vl_ = new QVBoxLayout();
+	vl_->addLayout(fl);
+	vl_->addWidget(submitButton_);
+	vl_->addWidget(serverInteractionProgressBar_);
+	vl_->addWidget(serverInteractionLabel_);
+
+	setLayout(vl_);
 	setWindowModality(Qt::WindowModal);
 
 	connect(usernameLineEdit_, SIGNAL(textChanged(QString)), this, SLOT(onLineEditsEditted()));
@@ -33,8 +41,24 @@ LYGithubProductBacklogAuthenticationView::LYGithubProductBacklogAuthenticationVi
 
 	connect(submitButton_, SIGNAL(clicked()), this, SLOT(onSubmitButtonClicked()));
 
+	prepareServerInteractionWidgets();
 	onLineEditsEditted();
+	usernameLineEdit_->setFocus();
+}
 
+void LYGithubProductBacklogAuthenticationView::setAuthenticated(bool authenticated){
+	serverInteractionProgressBar_->setMaximum(1);
+	serverInteractionProgressBar_->setValue(1);
+	if(authenticated){
+		serverInteractionLabel_->setText("Authentication Successful");
+		QTimer::singleShot(1000, this, SLOT(close()));
+	}
+	else{
+		serverInteractionLabel_->setText("Authentication Failed");
+		passwordLineEdit_->clear();
+		submitButton_->show();
+		QTimer::singleShot(1000, this, SLOT(prepareServerInteractionWidgets()));
+	}
 }
 
 void LYGithubProductBacklogAuthenticationView::onLineEditsEditted(){
@@ -45,7 +69,20 @@ void LYGithubProductBacklogAuthenticationView::onLineEditsEditted(){
 }
 
 void LYGithubProductBacklogAuthenticationView::onSubmitButtonClicked(){
+	submitButton_->setEnabled(false);
+	serverInteractionLabel_->setText("Authenticating ...");
+	serverInteractionProgressBar_->show();
+	serverInteractionLabel_->show();
+	submitButton_->hide();
 	emit submitAuthenticationInformation(usernameLineEdit_->text(), passwordLineEdit_->text(), repositoryLineEdit_->text());
+}
+
+void LYGithubProductBacklogAuthenticationView::prepareServerInteractionWidgets(){
+	serverInteractionProgressBar_->setMinimum(0);
+	serverInteractionProgressBar_->setMaximum(0);
+
+	serverInteractionProgressBar_->hide();
+	serverInteractionLabel_->hide();
 }
 
 LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(QWidget *parent) :
@@ -72,6 +109,7 @@ LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(QWidget
 
 	connect(productBacklog_, SIGNAL(activeChanges(bool)), this, SLOT(onActiveChangesChanged(bool)));
 	connect(uploadChangesButton_, SIGNAL(clicked()), this, SLOT(onUploadChangesButtonClicked()));
+	connect(productBacklog_, SIGNAL(authenticated(bool)), this, SLOT(onAuthenticated(bool)));
 
 	authenticationView_ = new LYGithubProductBacklogAuthenticationView();
 	connect(authenticationView_, SIGNAL(submitAuthenticationInformation(QString,QString,QString)), this, SLOT(onSubmitAuthenticationInformationAvailable(QString,QString,QString)));
@@ -80,10 +118,13 @@ LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(QWidget
 }
 
 void LYGithubProductBacklogCentralWidget::onSubmitAuthenticationInformationAvailable(const QString &username, const QString &password, const QString &repository){
-	authenticationView_->hide();
 	productBacklog_->setUserName(username);
 	productBacklog_->setPassword(password);
 	productBacklog_->setRepository(repository);
+}
+
+void LYGithubProductBacklogCentralWidget::onAuthenticated(bool authenticated){
+	authenticationView_->setAuthenticated(authenticated);
 }
 
 void LYGithubProductBacklogCentralWidget::onUploadChangesButtonClicked(){
