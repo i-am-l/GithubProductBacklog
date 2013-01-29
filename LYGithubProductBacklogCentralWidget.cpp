@@ -8,16 +8,17 @@ LYGithubProductBacklogAuthenticationView::LYGithubProductBacklogAuthenticationVi
 {
 	QFormLayout *fl = new QFormLayout();
 
-	usernameLineEdit_ = new QLineEdit("");
+	usernameLineEdit_ = new QLineEdit("i-am-l");
 	passwordLineEdit_ = new QLineEdit();
 	passwordLineEdit_->setEchoMode(QLineEdit::Password);
-	repositoryLineEdit_ = new QLineEdit("");
+	repositoryLineEdit_ = new QLineEdit("i-am-l/GithubProductBacklog");
 
 	fl->addRow("Username:", usernameLineEdit_);
 	fl->addRow("Password:", passwordLineEdit_);
 	fl->addRow("Repository:", repositoryLineEdit_);
 
 	submitButton_ = new QPushButton("Submit");
+	submitButton_->setDefault(true);
 
 	QVBoxLayout *vl = new QVBoxLayout();
 	vl->addLayout(fl);
@@ -33,6 +34,7 @@ LYGithubProductBacklogAuthenticationView::LYGithubProductBacklogAuthenticationVi
 	connect(submitButton_, SIGNAL(clicked()), this, SLOT(onSubmitButtonClicked()));
 
 	onLineEditsEditted();
+
 }
 
 void LYGithubProductBacklogAuthenticationView::onLineEditsEditted(){

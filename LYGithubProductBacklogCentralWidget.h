@@ -6,6 +6,7 @@
 
 #include "LYGithubProductBacklog.h"
 
+#include <QDialog>
 #include <QLineEdit>
 
 class LYGithubProductBacklogAuthenticationView : public QWidget
