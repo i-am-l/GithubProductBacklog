@@ -2,6 +2,7 @@
 #define LYGITHUBPRODUCTBACKLOGCENTRALWIDGET_H
 
 #include <QListView>
+#include <QTreeView>
 #include <QPushButton>
 
 #include "LYGithubProductBacklog.h"
@@ -77,6 +78,7 @@ protected slots:
 protected:
 	/// View for the list model coming from the product backlog
 	QListView *listView_;
+	QTreeView *treeView_;
 	/// Push button to upload changes that have been made
 	QPushButton *uploadChangesButton_;
 

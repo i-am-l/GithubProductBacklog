@@ -15,11 +15,17 @@ LYGithubProductBacklog::LYGithubProductBacklog(const QString &username, const QS
 	QStandardItem *item = new QStandardItem("Not Connected");
 	productBacklogModel_->appendRow(item);
 
+	newProductBacklogModel_ = new LYProductBacklogModel(this);
+
 	connect(productBacklogModel_, SIGNAL(itemChanged(QStandardItem*)), this, SLOT(onItemChanged(QStandardItem*)));
 	productBacklogModel_->setSupportedDragActions(Qt::MoveAction);
 
 	githubManager_ = new LYGithubManager(this);
 	authenticateHelper();
+}
+
+QAbstractItemModel* LYGithubProductBacklog::newModel() const{
+	return newProductBacklogModel_;
 }
 
 void LYGithubProductBacklog::uploadChanges(){
@@ -71,12 +77,50 @@ void LYGithubProductBacklog::onPopulateProductBacklogReturned(QList<QVariantMap>
 		allIssues.insert(issues.at(x).value("number").toInt(), issueItem);
 	}
 
-	QStringList orderingList = orderingInformation_.split(";", QString::SkipEmptyParts);
+	QString partialOrderingParse = orderingInformation_;
+	partialOrderingParse.replace('{', ';');
+	partialOrderingParse.replace("};", "");
+	QStringList orderingList = partialOrderingParse.split(";", QString::SkipEmptyParts);
 	int issueNumber;
 	for(int x = 0; x < orderingList.count(); x++){
 		issueNumber = orderingList.at(x).toInt();
 		productBacklogModel_->appendRow(allIssues.value(issueNumber));
 	}
+
+	QMap<int, int> issueNumberToParentIssueNumber;
+	QList<int> parentStack;
+	parentStack.push_front(-1);
+	int currentIssueNumber;
+	for(int x = 0; x < orderingInformation_.count(); x++){
+		if( (orderingInformation_.at(x) == '{') || (orderingInformation_.at(x) == '}') ){
+			//do nothing
+		}
+		else if(orderingInformation_.at(x) == ';'){
+			parentStack.pop_front();
+		}
+		else{
+			QString numberString;
+			numberString.append(orderingInformation_.at(x));
+			while(orderingInformation_.at(x+1).isDigit())
+				numberString.append(orderingInformation_.at(++x));
+			currentIssueNumber = numberString.toInt();
+			issueNumberToParentIssueNumber.insert(currentIssueNumber, parentStack.front());
+			parentStack.push_front(currentIssueNumber);
+		}
+	}
+
+	newProductBacklogModel_->clear();
+	LYProductBacklogItem *newIssueItem;
+	QMap<int, LYProductBacklogItem*> newAllIssues;
+	for(int x = 0; x < issues.count(); x++){
+		newIssueItem = new LYProductBacklogItem(issues.at(x).value("title").toString(), issues.at(x).value("number").toInt(), issueNumberToParentIssueNumber.value(issues.at(x).value("number").toInt()));
+		newAllIssues.insert(newIssueItem->issueNumber(), newIssueItem);
+	}
+
+	QList<int> newOrderingInformation;
+	for(int x = 0; x < orderingList.count(); x++)
+		newOrderingInformation.append(orderingList.at(x).toInt());
+	newProductBacklogModel_->setInternalData(newAllIssues, newOrderingInformation);
 }
 
 void LYGithubProductBacklog::onPopulateProductBacklogOrderingFindIssueReturned(QList<QVariantMap> issues){
@@ -195,4 +239,240 @@ void LYGithubProductBacklog::printGithubMapRecursive(QVariantMap map, int indent
 		}
 		++i;
 	}
+}
+
+
+
+
+LYProductBacklogItem::LYProductBacklogItem(const QString &issueTitle, int issueNumber, int parentIssueNumber)
+{
+	issueTitle_ = issueTitle;
+	issueNumber_ = issueNumber;
+	parentIssueNumber_ = parentIssueNumber;
+}
+
+QString LYProductBacklogItem::issueTitle() const{
+	return issueTitle_;
+}
+
+int LYProductBacklogItem::issueNumber() const{
+	return issueNumber_;
+}
+
+int LYProductBacklogItem::parentIssueNumber() const{
+	return parentIssueNumber_;
+}
+
+LYProductBacklogModel::LYProductBacklogModel(QObject *parent) :
+	QAbstractItemModel(parent)
+{
+
+}
+
+QModelIndex LYProductBacklogModel::index(int row, int column, const QModelIndex &parent) const{
+	// Return bad index if it's outside the known range
+	if(column < 0 || column > 0 || row < 0)
+		return QModelIndex();
+
+	// if no parent is top level
+	if(!parent.isValid()){
+		int foundTopLevels = 0;
+		for(int x = 0; x < orderingInformation_.count(); x++){
+			if(allIssues_.value(orderingInformation_.at(x))->parentIssueNumber() == -1)
+				foundTopLevels++;
+			if(foundTopLevels == row+1)
+				return createIndex(row, column, allIssues_.value(orderingInformation_.at(x)));
+		}
+		return QModelIndex();
+	}
+	// if parent then it's sub-level
+	else{
+		LYProductBacklogItem *parentProductBacklogItem = productBacklogItem(parent);
+		if(!parentProductBacklogItem)
+			return QModelIndex();
+
+		int parentIndexInList = orderingInformation_.indexOf(allIssues_.key(parentProductBacklogItem));
+		int siblingsFound = 0;
+		for(int x = parentIndexInList; x < orderingInformation_.count(); x++){
+			if(allIssues_.value(orderingInformation_.at(x))->parentIssueNumber() == parentProductBacklogItem->issueNumber())
+				siblingsFound++;
+			if(siblingsFound == row+1)
+				return createIndex(row, column, allIssues_.value(orderingInformation_.at(x)));
+		}
+		return QModelIndex();
+	}
+}
+
+QModelIndex LYProductBacklogModel::parent(const QModelIndex &child) const
+{
+	if(!child.isValid())
+		return QModelIndex();
+
+	LYProductBacklogItem *childProductBacklogItem = productBacklogItem(child);
+	if(!childProductBacklogItem)
+		return QModelIndex();
+
+	for(int x = 0; x < orderingInformation_.count(); x++)
+		if(allIssues_.value(orderingInformation_.at(x))->issueNumber() == childProductBacklogItem->parentIssueNumber())
+			return indexForProductBacklogItem(allIssues_.value(orderingInformation_.at(x)));
+
+	return QModelIndex();
+}
+
+int LYProductBacklogModel::rowCount(const QModelIndex &parent) const
+{
+	// top level
+	if(!parent.isValid()){
+		int topLevelsFound = 0;
+		for(int x = 0; x < orderingInformation_.count(); x++)
+			if(allIssues_.value(orderingInformation_.at(x))->parentIssueNumber() == -1)
+				topLevelsFound++;
+
+		return topLevelsFound;
+	}
+	// some sub-level
+	else{
+		LYProductBacklogItem *parentProductBacklogItem = productBacklogItem(parent);
+		if(!parentProductBacklogItem){
+			return 0;
+		}
+		int childrenFound = 0;
+		int parentIndexInList = orderingInformation_.indexOf(allIssues_.key(parentProductBacklogItem));
+		for(int x = parentIndexInList; x < orderingInformation_.count(); x++)//might optimize to figure a good ending point
+			if(allIssues_.value(orderingInformation_.at(x))->parentIssueNumber() == parentProductBacklogItem->issueNumber())
+				childrenFound++;
+
+		return childrenFound;
+	}
+}
+
+int LYProductBacklogModel::columnCount(const QModelIndex &parent) const
+{
+	if(!parent.isValid())
+		return 1;
+	else
+		return 0;
+}
+
+QVariant LYProductBacklogModel::data(const QModelIndex &index, int role) const
+{
+	LYProductBacklogItem *item = productBacklogItem(index);
+	if(!item){
+		return QVariant();
+	}
+
+	if(role == Qt::DisplayRole) {
+		switch(index.column()) {
+		case 0: return item->issueTitle();
+		}
+	}
+
+	return QVariant();
+}
+
+Qt::ItemFlags LYProductBacklogModel::flags(const QModelIndex &index) const
+{
+	if(!index.isValid())
+		return Qt::NoItemFlags;
+	if( index.column() != 0)
+		return Qt::ItemIsEnabled;
+	/*
+	AMActionLogItem3 *item = logItem(index);
+	// In case the item didn't (or isn't yet) in some sort of finished state
+	if(item && item->canCopy() && !(item->finalState() == 7 || item->finalState() == 8 || item->finalState() == 9) )
+		return Qt::ItemIsEnabled;
+	//In case a loop or list had no logged actions in it
+	if(item && item->canCopy() && item->actionInheritedLoop() && (childrenCount(index) == 0) )
+		return Qt::ItemIsEnabled;
+	//In case a loop or list had no logged actions in it
+	if(item && item->canCopy() && item->actionInheritedLoop() && (successfulChildrenCount(index) == 0) )
+		return Qt::ItemIsEnabled;
+	if (item && item->canCopy())
+		return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+	*/
+
+	return Qt::ItemIsEnabled;
+}
+
+QVariant LYProductBacklogModel::headerData(int section, Qt::Orientation orientation, int role) const
+{
+	if(role == Qt::DisplayRole && orientation == Qt::Horizontal) {
+		switch(section) {
+		case 0: return QString("Title");
+		default: return QVariant();
+		}
+	}
+	return QVariant();
+}
+
+bool LYProductBacklogModel::hasChildren(const QModelIndex &parent) const{
+	if(!parent.isValid())
+		return true; // top level must have children
+	else{
+		if(rowCount(parent) > 0)
+			return true;
+		return false;
+	}
+}
+
+LYProductBacklogItem* LYProductBacklogModel::productBacklogItem(const QModelIndex &index) const
+{
+	if(!index.isValid())
+		return 0;
+	return static_cast<LYProductBacklogItem*>(index.internalPointer());
+}
+
+QModelIndex LYProductBacklogModel::indexForProductBacklogItem(LYProductBacklogItem *productBacklogItem) const{
+	if(!productBacklogItem)
+		return QModelIndex();
+
+	if(productBacklogItem->parentIssueNumber() == -1){
+		// top level productBacklogItem
+		int topLevelBefore = 0;
+		for(int x = 0; x < orderingInformation_.count(); x++){
+			if(allIssues_.value(orderingInformation_.at(x)) == productBacklogItem){
+				return createIndex(topLevelBefore, 0, productBacklogItem);
+			}
+			if(allIssues_.value(orderingInformation_.at(x))->parentIssueNumber() == -1)
+				topLevelBefore++;
+		}
+		return QModelIndex();
+	}
+	else{
+		// we have a parent productBacklogItem
+		bool foundParent = false;
+		int backwardsIndex = orderingInformation_.indexOf(allIssues_.key(productBacklogItem)); //find myself
+		int numberOfSiblings = 0;
+		while(!foundParent){
+			if(backwardsIndex == 0){
+				return QModelIndex();
+			}
+			backwardsIndex--;
+			if(allIssues_.value(orderingInformation_.at(backwardsIndex))->issueNumber() == productBacklogItem->parentIssueNumber()) //mark parent found if id matches
+				foundParent = true;
+			else if(allIssues_.value(orderingInformation_.at(backwardsIndex))->parentIssueNumber() == productBacklogItem->parentIssueNumber()) //or increment the number of your siblings
+				numberOfSiblings++;
+		}
+		return createIndex(numberOfSiblings, 0, productBacklogItem);
+	}
+}
+
+//void LYProductBacklogModel::setAllIssues(QMap<int, LYProductBacklogItem *> allIssues){
+//	allIssues_ = allIssues;
+//}
+
+//void LYProductBacklogModel::setOrderingInformation(QList<int> orderingInformation){
+//	orderingInformation_ = orderingInformation;
+//}
+
+void LYProductBacklogModel::setInternalData(QMap<int, LYProductBacklogItem *> allIssues, QList<int> orderingInformation){
+	emit modelAboutToBeRefreshed();
+	allIssues_ = allIssues;
+	orderingInformation_ = orderingInformation;
+	emit modelRefreshed();
+}
+
+void LYProductBacklogModel::clear(){
+	allIssues_.clear();
+	orderingInformation_.clear();
 }

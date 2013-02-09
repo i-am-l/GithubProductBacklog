@@ -5,6 +5,8 @@
 
 #include "LYGithubManager.h"
 
+class LYProductBacklogModel;
+
 class LYGithubProductBacklog : public QObject
 {
 Q_OBJECT
@@ -13,6 +15,8 @@ public:
 	LYGithubProductBacklog(const QString &username = QString(), const QString &password = QString(), const QString &repository = QString(), QObject *parent = 0);
 
 	QStandardItemModel* model() const { return productBacklogModel_; }
+
+	QAbstractItemModel* newModel() const;
 
 public slots:
 	void uploadChanges();
@@ -72,6 +76,8 @@ protected:
 
 	QStandardItemModel *productBacklogModel_;
 
+	LYProductBacklogModel *newProductBacklogModel_;
+
 	QString orderingInformation_;
 	/// Id of the comment that holds the product backlog ordering information
 	int ordingInformationCommentId_;
@@ -84,6 +90,62 @@ protected:
 	QString password_;
 	/// String to hold the repository
 	QString repository_;
+};
+
+#include <QAbstractItemModel>
+
+class LYProductBacklogItem {
+public:
+	LYProductBacklogItem(const QString &issueTitle, int issueNumber, int parentIssueNumber = -1);
+
+	QString issueTitle() const;
+	int issueNumber() const;
+	int parentIssueNumber() const;
+
+protected:
+	QString issueTitle_;
+	int issueNumber_;
+	int parentIssueNumber_;
+};
+
+class LYProductBacklogModel : public QAbstractItemModel
+{
+Q_OBJECT
+public:
+	LYProductBacklogModel(QObject *parent = 0);
+
+	// Re-implemented public functions from QAbstractItemModel
+	/////////////////////
+	virtual QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const;
+	virtual QModelIndex parent(const QModelIndex &child) const;
+	virtual int rowCount(const QModelIndex &parent = QModelIndex()) const;
+	virtual int columnCount(const QModelIndex &parent = QModelIndex()) const;
+	virtual QVariant data(const QModelIndex &index, int role) const;
+	Qt::ItemFlags flags(const QModelIndex &index) const;
+	virtual QVariant headerData(int section, Qt::Orientation orientation, int role) const;
+	/// Returns whether or not this item has children (determines this from the underlying list)
+	virtual bool hasChildren(const QModelIndex &parent = QModelIndex()) const;
+
+	/// Returns the LYProductBacklogItem at \c index
+	LYProductBacklogItem* productBacklogItem(const QModelIndex& index) const;
+	/// Returns the model index for a given LYProductBacklogItem
+	QModelIndex indexForProductBacklogItem(LYProductBacklogItem *productBacklogItem) const;
+
+	//void setAllIssues(QMap<int, LYProductBacklogItem*> allIssues);
+	//void setOrderingInformation(QList<int> orderingInformation);
+	void setInternalData(QMap<int, LYProductBacklogItem*> allIssues, QList<int> orderingInformation);
+
+	void clear();
+
+signals:
+	/// This signal is emitted before the model is refreshed or updated. Views might want to use it to remember their scrolling position, etc.
+	void modelAboutToBeRefreshed();
+	/// This signal is emitted after the model is refreshed or updated. Views might want to use it to restore their scrolling position, etc.
+	void modelRefreshed();
+
+protected:
+	QMap<int, LYProductBacklogItem*> allIssues_;
+	QList<int> orderingInformation_;
 };
 
 #endif // LYGITHUBPRODUCTBACKLOG_H

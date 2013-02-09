@@ -98,12 +98,16 @@ LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(QWidget
 	listView_->setDropIndicatorShown(true);
 	listView_->setDragDropMode(QListView::InternalMove);
 
+	treeView_ = new QTreeView();
+	treeView_->setModel(productBacklog_->newModel());
+
 	uploadChangesButton_ = new QPushButton("Upload Changes");
 	uploadChangesButton_->setEnabled(false);
 
 	QVBoxLayout *vl = new QVBoxLayout();
 	vl->addWidget(uploadChangesButton_);
 	vl->addWidget(listView_);
+	vl->addWidget(treeView_);
 
 	setLayout(vl);
 
