@@ -20,6 +20,8 @@ LYGithubProductBacklog::LYGithubProductBacklog(const QString &username, const QS
 	connect(productBacklogModel_, SIGNAL(itemChanged(QStandardItem*)), this, SLOT(onItemChanged(QStandardItem*)));
 	productBacklogModel_->setSupportedDragActions(Qt::MoveAction);
 
+	//newProductBacklogModel_->setSupportedDragActions(Qt::MoveAction);
+
 	githubManager_ = new LYGithubManager(this);
 	authenticateHelper();
 }
@@ -184,6 +186,10 @@ void LYGithubProductBacklog::onItemChanged(QStandardItem *item){
 		activeChanges_ = true;
 		emit activeChanges(activeChanges_);
 	}
+}
+
+void LYGithubProductBacklog::onNewItemChanged(QStandardItem *item){
+	qDebug() << "Heard that an item in the new model changed";
 }
 
 bool LYGithubProductBacklog::authenticateHelper(){
@@ -373,9 +379,11 @@ QVariant LYProductBacklogModel::data(const QModelIndex &index, int role) const
 Qt::ItemFlags LYProductBacklogModel::flags(const QModelIndex &index) const
 {
 	if(!index.isValid())
-		return Qt::NoItemFlags;
+		return Qt::ItemIsDropEnabled;
 	if( index.column() != 0)
 		return Qt::ItemIsEnabled;
+
+	return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled;
 	/*
 	AMActionLogItem3 *item = logItem(index);
 	// In case the item didn't (or isn't yet) in some sort of finished state
@@ -390,8 +398,6 @@ Qt::ItemFlags LYProductBacklogModel::flags(const QModelIndex &index) const
 	if (item && item->canCopy())
 		return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
 	*/
-
-	return Qt::ItemIsEnabled;
 }
 
 QVariant LYProductBacklogModel::headerData(int section, Qt::Orientation orientation, int role) const
@@ -457,13 +463,23 @@ QModelIndex LYProductBacklogModel::indexForProductBacklogItem(LYProductBacklogIt
 	}
 }
 
-//void LYProductBacklogModel::setAllIssues(QMap<int, LYProductBacklogItem *> allIssues){
-//	allIssues_ = allIssues;
-//}
+bool LYProductBacklogModel::dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent){
+	return false;
+}
 
-//void LYProductBacklogModel::setOrderingInformation(QList<int> orderingInformation){
-//	orderingInformation_ = orderingInformation;
-//}
+QMimeData* LYProductBacklogModel::mimeData(const QModelIndexList &indexes) const{
+	if(indexes.count() != 1)
+		return 0;
+	return new LYModelIndexListMimeData3(indexes);
+}
+
+QStringList LYProductBacklogModel::mimeTypes() const{
+	return QStringList() << "application/octet-stream";
+}
+
+Qt::DropActions LYProductBacklogModel::supportedDropActions() const{
+	return (Qt::MoveAction | Qt::IgnoreAction);
+}
 
 void LYProductBacklogModel::setInternalData(QMap<int, LYProductBacklogItem *> allIssues, QList<int> orderingInformation){
 	emit modelAboutToBeRefreshed();

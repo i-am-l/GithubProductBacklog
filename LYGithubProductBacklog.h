@@ -58,6 +58,7 @@ protected slots:
 	void onUploadChangesReturned(QVariantMap comment);
 
 	void onItemChanged(QStandardItem *item);
+	void onNewItemChanged(QStandardItem *item);
 
 	/// Get the issues from the Github repository to populate the list
 	void populateProductBacklog();
@@ -131,8 +132,18 @@ public:
 	/// Returns the model index for a given LYProductBacklogItem
 	QModelIndex indexForProductBacklogItem(LYProductBacklogItem *productBacklogItem) const;
 
-	//void setAllIssues(QMap<int, LYProductBacklogItem*> allIssues);
-	//void setOrderingInformation(QList<int> orderingInformation);
+	// Drag and Drop functions:
+	////////////////////////////////
+
+	/// Re-implemented from QAbstractItemModel to deal with dropping when re-ordering the queue via drag-and-drop.
+	virtual bool dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column, const QModelIndex &parent);
+	/// Re-implemented from QAbstractItemModel to deal with dragging when re-ordering the queue via drag-and-drop.
+	virtual QMimeData* mimeData(const QModelIndexList &indexes) const;
+	/// Re-implemented from QAbstractItemModel to deal with dragging when re-ordering the queue via drag-and-drop.
+	virtual QStringList mimeTypes() const;
+	/// Re-implemented from QAbstractItemModel to deal with dropping when re-ordering the queue via drag-and-drop
+	virtual Qt::DropActions supportedDropActions() const;
+
 	void setInternalData(QMap<int, LYProductBacklogItem*> allIssues, QList<int> orderingInformation);
 
 	void clear();
@@ -146,6 +157,29 @@ signals:
 protected:
 	QMap<int, LYProductBacklogItem*> allIssues_;
 	QList<int> orderingInformation_;
+};
+
+#include <QMimeData>
+#include <QPersistentModelIndex>
+
+class LYModelIndexListMimeData3 : public QMimeData {
+	Q_OBJECT
+public:
+	/// Constructor
+	LYModelIndexListMimeData3(const QModelIndexList& mil) : QMimeData() {
+		foreach(const QModelIndex& mi, mil)
+			mil_ << mi;
+	}
+
+	/// Access the model index list
+	QList<QPersistentModelIndex> modelIndexList() const { return mil_; }
+
+	/// Returns the formats we have: only an application-specific binary format. (Internal use only; other apps should not look at this.)
+	virtual QStringList formats() const { return QStringList() << "application/octet-stream"; }
+
+protected:
+	/// holds a list of QPersistentModelIndex that were the source of the drag event (with the assumption that they pertain to the same model as the drop destination)
+	QList<QPersistentModelIndex> mil_;
 };
 
 #endif // LYGITHUBPRODUCTBACKLOG_H
