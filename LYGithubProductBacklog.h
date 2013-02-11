@@ -150,8 +150,12 @@ public:
 
 	void clear();
 
+	QString generateListNotation() const;
+
 protected:
 	QList<int> childrenOf(LYProductBacklogItem *pbItem) const;
+
+	QString recursiveGenerateNotation(LYProductBacklogItem *pbItem) const;
 
 signals:
 	/// This signal is emitted before the model is refreshed or updated. Views might want to use it to remember their scrolling position, etc.

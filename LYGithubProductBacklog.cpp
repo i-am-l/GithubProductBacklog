@@ -485,18 +485,6 @@ bool LYProductBacklogModel::dropMimeData(const QMimeData *data, Qt::DropAction a
 			QPersistentModelIndex mi = mil.at(0);
 			LYProductBacklogItem *pbItem = productBacklogItem(index(mi.row(), mi.column(), mi.parent()));
 
-			/*
-			if(!parent.isValid()){
-				// Move to top level, find
-				qDebug() << "New parent -1, row " << row;
-			}
-			else{
-				qDebug() << "New parent " << productBacklogItem(parent)->issueNumber() << ", row " << row;
-			}
-			if((mi.parent() == parent) && (mi.row() < row) )
-				qDebug() << "Movement in same level to lower position, destination row will be off by 1, new row is " << row-1;
-			*/
-
 			int indexOfThingIWillBeInsertedAfter;
 			LYProductBacklogItem *itemBeforeMeAtDestinationLevel = 0;
 			int effectiveRow = row;
@@ -534,24 +522,6 @@ bool LYProductBacklogModel::dropMimeData(const QMimeData *data, Qt::DropAction a
 
 			qDebug() << "I will be inserted after " << indexOfThingIWillBeInsertedAfter;
 
-			/*
-			int indexOfThingBeforeMe;
-			if(row == 0){
-				if(!parent.isValid())
-					indexOfThingBeforeMe = -1;
-				else
-					indexOfThingBeforeMe = productBacklogItem(parent)->issueNumber();
-			}
-			else{
-				//if((mi.parent() == parent) && (mi.row() < row))
-				if(mi.parent() == parent)
-					indexOfThingBeforeMe = childrenOf(productBacklogItem(index(row-1, 0, QModelIndex()))).last();
-				else
-					indexOfThingBeforeMe = childrenOf(productBacklogItem(index(row, 0, QModelIndex()))).last();
-			}
-			qDebug() << "Now I will go after " << indexOfThingBeforeMe;
-			*/
-
 			QList<int> listToMove = childrenOf(pbItem);
 			qDebug() << "Need to move the sub list " << listToMove;
 			qDebug() << "List was " << orderingInformation_;
@@ -569,7 +539,6 @@ bool LYProductBacklogModel::dropMimeData(const QMimeData *data, Qt::DropAction a
 				}
 			}
 
-			//emit modelAboutToBeRefreshed();
 			emit beginResetModel();
 
 			for(int x = 0; x < listToMove.count(); x++)
@@ -589,7 +558,6 @@ bool LYProductBacklogModel::dropMimeData(const QMimeData *data, Qt::DropAction a
 					newParentIssueNumber = productBacklogItem(parent)->issueNumber();
 				pbItem->setParentIssueNumber(newParentIssueNumber);
 			}
-			//emit modelRefreshed();
 			emit endResetModel();
 			qDebug() << "Item has moved to row " << indexForProductBacklogItem(pbItem).row();
 			qDebug() << "Does it have children " << hasChildren(indexForProductBacklogItem(pbItem));
@@ -597,33 +565,9 @@ bool LYProductBacklogModel::dropMimeData(const QMimeData *data, Qt::DropAction a
 				qDebug() << "Child row " << x << " is " << productBacklogItem(index(x, 0, indexForProductBacklogItem(pbItem)))->issueTitle();
 			}
 
-			/*
-			// Handle a move to the top level
-			if(!parent.isValid()){
-				// Moving from top level to top level
-				if(!mi.parent().isValid()){
-					qDebug() << "Sub level to top level: Want to move with " << pbItem->issueNumber() << pbItem->parentIssueNumber() << hasChildren(index(mi.row(), mi.column(), mi.parent()));
-				}
-				// Moving from inside something to top level
-				else{
-					qDebug() << "Sub level to top level: Want to move with " << pbItem->issueNumber() << pbItem->parentIssueNumber() << hasChildren(index(mi.row(), mi.column(), mi.parent()));
-				}
-			}
-			else{
-				// Moving from top level to sub level
-				if(!mi.parent().isValid()){
-					qDebug() << "Top level to sub level: Want to move with " << pbItem->issueNumber() << pbItem->parentIssueNumber() << hasChildren(index(mi.row(), mi.column(), mi.parent()));
-				}
-				// Moving within the parent's list
-				else if(mi.parent() == parent){
-					qDebug() << "Sub level to same sub level: Want to move with " << pbItem->issueNumber() << pbItem->parentIssueNumber() << hasChildren(index(mi.row(), mi.column(), mi.parent()));
-				}
-				// Moving to a different parent
-				else{
-					qDebug() << "Sub level to different sub level: Want to move with " << pbItem->issueNumber() << pbItem->parentIssueNumber() << hasChildren(index(mi.row(), mi.column(), mi.parent()));
-				}
-			}
-			*/
+			qDebug() << "Now the list notation is " << generateListNotation();
+
+			return true;
 		}
 	}
 	return false;
@@ -644,11 +588,9 @@ Qt::DropActions LYProductBacklogModel::supportedDropActions() const{
 }
 
 void LYProductBacklogModel::setInternalData(QMap<int, LYProductBacklogItem *> allIssues, QList<int> orderingInformation){
-	//emit modelAboutToBeRefreshed();
 	emit beginResetModel();
 	allIssues_ = allIssues;
 	orderingInformation_ = orderingInformation;
-	//emit modelRefreshed();
 	emit endResetModel();
 }
 
@@ -657,11 +599,32 @@ void LYProductBacklogModel::clear(){
 	orderingInformation_.clear();
 }
 
+QString LYProductBacklogModel::generateListNotation() const{
+	QString retVal;
+	for(int x = 0; x < rowCount(QModelIndex()); x++)
+		retVal.append(recursiveGenerateNotation(productBacklogItem(index(x, 0, QModelIndex()))));
+	return retVal;
+}
+
 QList<int> LYProductBacklogModel::childrenOf(LYProductBacklogItem *pbItem) const{
 	QList<int> retVal;
 	retVal.append(pbItem->issueNumber());
 	QModelIndex itemIndex = indexForProductBacklogItem(pbItem);
 	for(int x = 0; x < rowCount(itemIndex); x++)
 		retVal.append(childrenOf(productBacklogItem(itemIndex.child(x, 0))));
+	return retVal;
+}
+
+QString LYProductBacklogModel::recursiveGenerateNotation(LYProductBacklogItem *pbItem) const{
+	QString retVal;
+	retVal.append(QString("%1").arg(pbItem->issueNumber()));
+	QModelIndex myIndex = indexForProductBacklogItem(pbItem);
+	if(hasChildren(myIndex))
+		retVal.append("{");
+	for(int x = 0; x < rowCount(myIndex); x++)
+		retVal.append(recursiveGenerateNotation(productBacklogItem(index(x, 0, myIndex))));
+	if(hasChildren(myIndex))
+		retVal.append("}");
+	retVal.append(";");
 	return retVal;
 }
