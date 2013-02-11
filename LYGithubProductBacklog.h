@@ -103,6 +103,8 @@ public:
 	int issueNumber() const;
 	int parentIssueNumber() const;
 
+	void setParentIssueNumber(int parentIssueNumber);
+
 protected:
 	QString issueTitle_;
 	int issueNumber_;
@@ -147,6 +149,9 @@ public:
 	void setInternalData(QMap<int, LYProductBacklogItem*> allIssues, QList<int> orderingInformation);
 
 	void clear();
+
+protected:
+	QList<int> childrenOf(LYProductBacklogItem *pbItem) const;
 
 signals:
 	/// This signal is emitted before the model is refreshed or updated. Views might want to use it to remember their scrolling position, etc.
