@@ -171,24 +171,24 @@ protected:
 #include <QMimeData>
 #include <QPersistentModelIndex>
 
-class LYModelIndexListMimeData3 : public QMimeData {
+class LYProductBacklogModelIndexListMimeData3 : public QMimeData {
 	Q_OBJECT
 public:
 	/// Constructor
-	LYModelIndexListMimeData3(const QModelIndexList& mil) : QMimeData() {
-		foreach(const QModelIndex& mi, mil)
-			mil_ << mi;
+	LYProductBacklogModelIndexListMimeData3(const QModelIndexList& modelIndexList) : QMimeData() {
+		foreach(const QModelIndex& modelIndex, modelIndexList)
+			modelIndexList_ << modelIndex;
 	}
 
 	/// Access the model index list
-	QList<QPersistentModelIndex> modelIndexList() const { return mil_; }
+	QList<QPersistentModelIndex> modelIndexList() const { return modelIndexList_; }
 
 	/// Returns the formats we have: only an application-specific binary format. (Internal use only; other apps should not look at this.)
 	virtual QStringList formats() const { return QStringList() << "application/octet-stream"; }
 
 protected:
 	/// holds a list of QPersistentModelIndex that were the source of the drag event (with the assumption that they pertain to the same model as the drop destination)
-	QList<QPersistentModelIndex> mil_;
+	QList<QPersistentModelIndex> modelIndexList_;
 };
 
 #endif // LYGITHUBPRODUCTBACKLOG_H

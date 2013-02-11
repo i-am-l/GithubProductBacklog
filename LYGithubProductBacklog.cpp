@@ -20,8 +20,6 @@ LYGithubProductBacklog::LYGithubProductBacklog(const QString &username, const QS
 	connect(productBacklogModel_, SIGNAL(itemChanged(QStandardItem*)), this, SLOT(onItemChanged(QStandardItem*)));
 	productBacklogModel_->setSupportedDragActions(Qt::MoveAction);
 
-	//newProductBacklogModel_->setSupportedDragActions(Qt::MoveAction);
-
 	githubManager_ = new LYGithubManager(this);
 	authenticateHelper();
 }
@@ -343,7 +341,6 @@ int LYProductBacklogModel::rowCount(const QModelIndex &parent) const
 	// some sub-level
 	else{
 		LYProductBacklogItem *parentProductBacklogItem = productBacklogItem(parent);
-		//qDebug() << "Found parent item as " << parentProductBacklogItem->issueTitle();
 		if(!parentProductBacklogItem){
 			return 0;
 		}
@@ -389,20 +386,6 @@ Qt::ItemFlags LYProductBacklogModel::flags(const QModelIndex &index) const
 		return Qt::ItemIsEnabled;
 
 	return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled;
-	/*
-	AMActionLogItem3 *item = logItem(index);
-	// In case the item didn't (or isn't yet) in some sort of finished state
-	if(item && item->canCopy() && !(item->finalState() == 7 || item->finalState() == 8 || item->finalState() == 9) )
-		return Qt::ItemIsEnabled;
-	//In case a loop or list had no logged actions in it
-	if(item && item->canCopy() && item->actionInheritedLoop() && (childrenCount(index) == 0) )
-		return Qt::ItemIsEnabled;
-	//In case a loop or list had no logged actions in it
-	if(item && item->canCopy() && item->actionInheritedLoop() && (successfulChildrenCount(index) == 0) )
-		return Qt::ItemIsEnabled;
-	if (item && item->canCopy())
-		return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
-	*/
 }
 
 QVariant LYProductBacklogModel::headerData(int section, Qt::Orientation orientation, int role) const
@@ -472,100 +455,93 @@ bool LYProductBacklogModel::dropMimeData(const QMimeData *data, Qt::DropAction a
 
 	// Handle the move action
 	if(action == Qt::MoveAction){
-		const LYModelIndexListMimeData3 *milData = qobject_cast<const LYModelIndexListMimeData3*>(data);
-		if(milData){
-			QList<QPersistentModelIndex> mil = milData->modelIndexList();
+		const LYProductBacklogModelIndexListMimeData3 *modelIndexListData = qobject_cast<const LYProductBacklogModelIndexListMimeData3*>(data);
+		if(modelIndexListData){
+			QList<QPersistentModelIndex> modelIndexList = modelIndexListData->modelIndexList();
 			// We only handle moving one thing
-			if(mil.count() != 1)
+			if(modelIndexList.count() != 1)
 				return false;
 			// Check to make sure the index is valid
-			if(!mil.at(0).isValid())
+			if(!modelIndexList.at(0).isValid())
 				return false;
 
-			QPersistentModelIndex mi = mil.at(0);
-			LYProductBacklogItem *pbItem = productBacklogItem(index(mi.row(), mi.column(), mi.parent()));
+			// Grad the single model index we're interested in and the underlying item
+			QPersistentModelIndex modelIndex = modelIndexList.at(0);
+			LYProductBacklogItem *pbItem = productBacklogItem(index(modelIndex.row(), modelIndex.column(), modelIndex.parent()));
 
+			// Figure out where we're moving to by figuring out the issue number of the thing that will be before us
 			int indexOfThingIWillBeInsertedAfter;
 			LYProductBacklogItem *itemBeforeMeAtDestinationLevel = 0;
 			int effectiveRow = row;
+			// These are appends, so figure out the row count
 			if(row == -1)
 				effectiveRow = rowCount(parent);
 
-			if(effectiveRow == 0)
-				qDebug() << "At the destination level, there will be no issue before me";
-			else if(parent.isValid()){
+			// Can't get the item before us if we're going to be the first one
+			if(effectiveRow == 0){
+				// do nothing here
+			}
+			// Get the item before us by looking up the parent
+			else if(parent.isValid())
 				itemBeforeMeAtDestinationLevel = productBacklogItem(parent.child(effectiveRow-1, 0));
-				qDebug() << "At the destination level, the issue number before me will be " << productBacklogItem(parent.child(effectiveRow-1, 0))->issueNumber();
-			}
-			else{
+			// No parent, must be top level so look there
+			else
 				itemBeforeMeAtDestinationLevel = productBacklogItem(index(effectiveRow-1, 0, QModelIndex()));
-				qDebug() << "At the destination level (which is top), the issue number before me will be " << productBacklogItem(index(effectiveRow-1, 0, QModelIndex()))->issueNumber();
-			}
-			if(itemBeforeMeAtDestinationLevel){
-				qDebug() << "In the list I will go after " << childrenOf(itemBeforeMeAtDestinationLevel).last();
+
+			// Get the actual issue number that will be right before us in the flat list ... that is the last child of the sibling right before us at the same level
+			if(itemBeforeMeAtDestinationLevel)
 				indexOfThingIWillBeInsertedAfter = childrenOf(itemBeforeMeAtDestinationLevel).last();
-			}
+			// Maybe we can't because there's nothing right before us
 			else{
-				if(!parent.isValid()){
-					qDebug() << "In the list I will go first";
+				// First item at the top level is special
+				if(!parent.isValid())
 					indexOfThingIWillBeInsertedAfter = -1;
-				}
-				else if(row == 0){
-					qDebug() << "In the list I will go after " << productBacklogItem(parent)->issueNumber();
+				// Differentiate between going to position zero on an exisiting row
+				else if(row == 0)
 					indexOfThingIWillBeInsertedAfter = productBacklogItem(parent)->issueNumber();
-				}
-				else{
-					qDebug() << "In the list I will go after " << childrenOf(productBacklogItem(parent)).last();
+				// And going to the end of a row
+				else
 					indexOfThingIWillBeInsertedAfter = childrenOf(productBacklogItem(parent)).last();
-				}
 			}
 
-			qDebug() << "I will be inserted after " << indexOfThingIWillBeInsertedAfter;
-
+			//Figure out the flat list of things we have to move and the offset to our current position
 			QList<int> listToMove = childrenOf(pbItem);
-			qDebug() << "Need to move the sub list " << listToMove;
-			qDebug() << "List was " << orderingInformation_;
-
 			int offsetIndex = orderingInformation_.indexOf(pbItem->issueNumber());
 
+			// Make sure that something didn't get messed up (running off the end of the list or the list changing order somehow)
 			for(int x = 0; x < listToMove.count(); x++){
 				if(offsetIndex+x == orderingInformation_.count()){
-					qDebug() << "Ran off the end of the ordering list";
+					//qDebug() << "Ran off the end of the ordering list";
 					return false;
 				}
 				if(orderingInformation_.at(x+offsetIndex) != listToMove.at(x)){
-					qDebug() << "List mismatch at " << x+offsetIndex << x;
+					//qDebug() << "List mismatch at " << x+offsetIndex << x;
 					return false;
 				}
 			}
 
+			// Begin actually changing things
 			emit beginResetModel();
 
+			// Remove us and our children from the flat list
 			for(int x = 0; x < listToMove.count(); x++)
 				orderingInformation_.removeAt(offsetIndex);
-			qDebug() << "Removed, now list is " << orderingInformation_;
 
-			qDebug() << "Is the thing I need to be inserted after still in the list " << orderingInformation_.contains(indexOfThingIWillBeInsertedAfter);
-
+			//Get the insertion index in the altered flat list
 			int insertAtIndex = orderingInformation_.indexOf(indexOfThingIWillBeInsertedAfter)+1;
+			// Add us and are children there
 			for(int x = listToMove.count()-1; x >= 0; x--)
 				orderingInformation_.insert(insertAtIndex, listToMove.at(x));
 
-			qDebug() << "Final list should be " << orderingInformation_;
-			if(mi.parent() != parent){
+			// Change the parent issue number on the item if the move changed the level
+			if(modelIndex.parent() != parent){
 				int newParentIssueNumber = -1;
 				if(parent.isValid())
 					newParentIssueNumber = productBacklogItem(parent)->issueNumber();
 				pbItem->setParentIssueNumber(newParentIssueNumber);
 			}
+			// Finished actually changing things
 			emit endResetModel();
-			qDebug() << "Item has moved to row " << indexForProductBacklogItem(pbItem).row();
-			qDebug() << "Does it have children " << hasChildren(indexForProductBacklogItem(pbItem));
-			for(int x = 0; x < rowCount(indexForProductBacklogItem(pbItem)); x++){
-				qDebug() << "Child row " << x << " is " << productBacklogItem(index(x, 0, indexForProductBacklogItem(pbItem)))->issueTitle();
-			}
-
-			qDebug() << "Now the list notation is " << generateListNotation();
 
 			return true;
 		}
@@ -576,7 +552,7 @@ bool LYProductBacklogModel::dropMimeData(const QMimeData *data, Qt::DropAction a
 QMimeData* LYProductBacklogModel::mimeData(const QModelIndexList &indexes) const{
 	if(indexes.count() != 1)
 		return 0;
-	return new LYModelIndexListMimeData3(indexes);
+	return new LYProductBacklogModelIndexListMimeData3(indexes);
 }
 
 QStringList LYProductBacklogModel::mimeTypes() const{
