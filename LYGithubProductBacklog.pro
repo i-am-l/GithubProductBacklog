@@ -21,7 +21,8 @@ SOURCES += main.cpp\
 	qjson/parserrunnable.cpp \
 	qjson/qobjecthelper.cpp \
 	qjson/serializer.cpp \
-	qjson/serializerrunnable.cpp
+	qjson/serializerrunnable.cpp \
+    LYProductBacklogModel.cpp
 
 HEADERS  += LYGithubProductBacklogMainWindow.h \
 	LYGithubManager.h \
@@ -39,7 +40,10 @@ HEADERS  += LYGithubProductBacklogMainWindow.h \
 	qjson/qobjecthelper.h \
 	qjson/serializer.h \
 	qjson/serializerrunnable.h \
-	qjson/stack.hh
+	qjson/stack.hh \
+    LYProductBacklogModel.h
+
+
 
 
 
