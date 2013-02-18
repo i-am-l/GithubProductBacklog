@@ -50,9 +50,15 @@ void LYGithubProductBacklog::setRepository(const QString &repository){
 
 void LYGithubProductBacklog::onGitAuthenticated(bool wasAuthenticated){
 	if(wasAuthenticated){
+		connectionQueue_.pop_front();
+
 		qDebug() << "Successfully authenticated";
-		connect(this, SIGNAL(productBacklogOrderingReturned(QVariantMap)), this, SLOT(populateProductBacklog()));
-		retrieveProductBacklogOrdering();
+		//connect(this, SIGNAL(productBacklogOrderingReturned(QVariantMap)), this, SLOT(populateProductBacklog()));
+		//retrieveProductBacklogOrdering();
+
+		LYConnectionQueueObject *connectionQueueObject = new LYConnectionQueueObject(this, SIGNAL(productBacklogOrderingReturned(QVariantMap)), this, SLOT(populateProductBacklog()), this, SLOT(retrieveProductBacklogOrdering()), this);
+		connectionQueue_.push_back(connectionQueueObject);
+		connectionQueue_.at(0)->initiate();
 	}
 	else
 		qDebug() << "Could not authenticate";
@@ -86,6 +92,9 @@ void LYGithubProductBacklog::onPopulateProductBacklogReturned(QList<QVariantMap>
 		issueNumber = orderingList.at(x).toInt();
 		productBacklogModel_->appendRow(allIssues.value(issueNumber));
 	}
+
+	qDebug() << "Count on ordering list: " << orderingList.count();
+	qDebug() << "Count on issues list: " << issues.count();
 
 	QMap<int, int> issueNumberToParentIssueNumber;
 	QList<int> parentStack;
@@ -195,8 +204,13 @@ bool LYGithubProductBacklog::authenticateHelper(){
 	githubManager_->setPassword(password_);
 	githubManager_->setRepository(repository_);
 
-	connect(githubManager_, SIGNAL(authenticated(bool)), this, SLOT(onGitAuthenticated(bool)));
-	githubManager_->authenticate();
+	//connect(githubManager_, SIGNAL(authenticated(bool)), this, SLOT(onGitAuthenticated(bool)));
+	//githubManager_->authenticate();
+
+	LYConnectionQueueObject *connectionQueueObject = new LYConnectionQueueObject(githubManager_, SIGNAL(authenticated(bool)), this, SLOT(onGitAuthenticated(bool)), githubManager_, SLOT(authenticate()), this);
+	connectionQueue_.push_back(connectionQueueObject);
+	connectionQueue_.at(0)->initiate();
+
 	return true;
 }
 
@@ -206,17 +220,45 @@ void LYGithubProductBacklog::populateProductBacklog(){
 	connect(githubManager_, SIGNAL(issuesReturned(QList<QVariantMap>)), this, SLOT(onPopulateProductBacklogReturned(QList<QVariantMap>)));
 }
 
+#include <QMetaMethod>
 void LYGithubProductBacklog::retrieveProductBacklogOrdering(){
+	connectionQueue_.pop_front();
 
 	if(ordingInformationCommentId_ < 0){
 		qDebug() << "Have to do the work from scratch";
-		githubManager_->getIssues(LYGithubManager::IssuesFilterAll, LYGithubManager::IssuesStateClosed);
+		//githubManager_->getIssues(LYGithubManager::IssuesFilterAll, LYGithubManager::IssuesStateClosed);
+
+		const QMetaObject *mo = githubManager_->metaObject();
+		//const char *slotInQuestion = SLOT(getIssues(LYGithubManager::IssuesFilter,LYGithubManager::IssuesState,LYGithubManager::IssuesSort,LYGithubManager::IssuesDirection));
+		const char *slotInQuestion = SLOT(getIssues(LYGithubManager::IssuesFilter,LYGithubManager::IssuesState));
+		QString slotInQuestionAsString = QString("%1").arg(slotInQuestion).remove(0, 1);
+		qDebug() << "Slot is " << slotInQuestion << slotInQuestionAsString;
+		int indexOfMethod = mo->indexOfMethod(slotInQuestionAsString.toAscii());
+		qDebug() << "We have method index of " << indexOfMethod;
+		QMetaMethod mm = mo->method(indexOfMethod);
+		qDebug() << "Info about that call " << mm.parameterTypes();
+		int indexOfOpenParenthesis = slotInQuestionAsString.indexOf('(');
+		QString finalSlotString = slotInQuestionAsString.remove(indexOfOpenParenthesis, slotInQuestionAsString.count()-indexOfOpenParenthesis);
+
+		QList<QGenericArgument> arguments;
+		arguments.append(Q_ARG(LYGithubManager::IssuesFilter, LYGithubManager::IssuesFilterAll));
+		arguments.append(Q_ARG(LYGithubManager::IssuesState, LYGithubManager::IssuesStateClosed));
+		mo->invokeMethod(githubManager_, finalSlotString.toAscii(), arguments.at(0), arguments.at(1));
+
 		connect(githubManager_, SIGNAL(issuesReturned(QList<QVariantMap>)), this, SLOT(onPopulateProductBacklogOrderingFindIssueReturned(QList<QVariantMap>)));
+
+		//LYConnectionQueueObject *connectionQueueObject = new LYConnectionQueueObject(githubManager_, SIGNAL(authenticated(bool)), this, SLOT(onGitAuthenticated(bool)), githubManager_, SLOT(authenticate()), this);
+		//connectionQueue_.push_back(connectionQueueObject);
+		//connectionQueue_.at(0)->initiate();
 	}
 	else{
 		qDebug() << "Already know the comment id, so we can cut corners";
 		githubManager_->getSingleComment(ordingInformationCommentId_);
 		connect(githubManager_, SIGNAL(singleCommentReturned(QVariantMap)), this, SLOT(onPopulateProductBacklogOrderingDirectOrderingCommentReturned(QVariantMap)));
+
+		//LYConnectionQueueObject *connectionQueueObject = new LYConnectionQueueObject(githubManager_, SIGNAL(authenticated(bool)), this, SLOT(onGitAuthenticated(bool)), githubManager_, SLOT(authenticate()), this);
+		//connectionQueue_.push_back(connectionQueueObject);
+		//connectionQueue_.at(0)->initiate();
 	}
 }
 
@@ -240,4 +282,28 @@ void LYGithubProductBacklog::printGithubMapRecursive(QVariantMap map, int indent
 		}
 		++i;
 	}
+}
+
+LYConnectionQueueObject::LYConnectionQueueObject(QObject *sender, const char *signal, QObject *receiver, const char *slot, QObject *initiatorObject, const char *initiatorSlot, QObject *parent) :
+	QObject(parent)
+{
+	sender_ = sender;
+	signal_ = signal;
+	receiver_ = receiver;
+	slot_ = slot;
+	initiatorObject_ = initiatorObject;
+	initiatorSlot_ = initiatorSlot;
+}
+
+void LYConnectionQueueObject::initiate(){
+	connect(sender_, signal_, receiver_, slot_);
+	connect(sender_, signal_, this, SLOT(onSignalReceived()));
+	QString normalizedInitatorSlot = QString("%1").arg(initiatorSlot_).remove(0,1).remove("()");
+	initiatorObject_->metaObject()->invokeMethod(initiatorObject_, normalizedInitatorSlot.toAscii());
+}
+
+void LYConnectionQueueObject::onSignalReceived(){
+	qDebug() << "Queue object heard the signal too";
+	disconnect(sender_, signal_, receiver_, slot_);
+	disconnect(sender_, signal_, this, SLOT(onSignalReceived()));
 }

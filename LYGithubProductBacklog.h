@@ -6,6 +6,9 @@
 #include "LYGithubManager.h"
 #include "LYProductBacklogModel.h"
 
+class LYConnectionQueueObject;
+
+
 class LYGithubProductBacklog : public QObject
 {
 Q_OBJECT
@@ -89,6 +92,29 @@ protected:
 	QString password_;
 	/// String to hold the repository
 	QString repository_;
+
+	QList<LYConnectionQueueObject*> connectionQueue_;
+};
+
+class LYConnectionQueueObject : public QObject
+{
+Q_OBJECT
+public:
+	LYConnectionQueueObject(QObject *sender, const char *signal, QObject *receiver, const char *slot, QObject *initiatorObject, const char *initiatorSlot, QObject *parent = 0);
+
+public slots:
+	void initiate();
+
+protected slots:
+	void onSignalReceived();
+
+protected:
+	QObject *sender_;
+	const char *signal_;
+	QObject *receiver_;
+	const char *slot_;
+	QObject *initiatorObject_;
+	const char *initiatorSlot_;
 };
 
 #endif // LYGITHUBPRODUCTBACKLOG_H
