@@ -12,6 +12,8 @@ Q_OBJECT
 public:
 	LYConnectionQueueObject(QObject *sender, const char *signal, QObject *receiver, const char *slot, QObject *initiatorObject, const char *initiatorSlot, QObject *parent = 0);
 
+	QString signal() const;
+
 public slots:
 	void initiate(QList<QGenericArgument> initiatorArguments = QList<QGenericArgument>());
 
@@ -37,8 +39,11 @@ Q_OBJECT
 public:
 	LYConnectionQueue(QObject *parent = 0);
 
-	int queuedObjects() const;
-	int waitingObjects() const;
+	int queuedObjectsCount() const;
+	int waitingObjectsCount() const;
+
+	QStringList queuedObjects() const;
+	QStringList waitingObjects() const;
 
 public slots:
 	void pushFrontConnectionQueueObject(LYConnectionQueueObject *queueObject);

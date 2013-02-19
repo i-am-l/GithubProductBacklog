@@ -51,15 +51,11 @@ void LYGithubProductBacklog::setRepository(const QString &repository){
 void LYGithubProductBacklog::onGitAuthenticated(bool wasAuthenticated){
 	if(wasAuthenticated){
 		qDebug() << "Successfully authenticated";
-		//connect(this, SIGNAL(productBacklogOrderingReturned(QVariantMap)), this, SLOT(populateProductBacklog()));
-		//retrieveProductBacklogOrdering();
 
 		LYConnectionQueueObject *connectionQueueObject = new LYConnectionQueueObject(this, SIGNAL(productBacklogOrderingReturned(QVariantMap)), this, SLOT(populateProductBacklog()), this, SLOT(retrieveProductBacklogOrdering()), this);
-		//connectionQueue_.push_back(connectionQueueObject);
-		//connectionQueue_.at(0)->initiate();
-		//qDebug() << "In onGitAuthenticated, queue count " << connectionQueue_.count();
 		connectionQueue_.pushFrontConnectionQueueObject(connectionQueueObject);
-		qDebug() << "(onGitAuthenticated) Queued " << connectionQueue_.queuedObjects() << connectionQueue_.waitingObjects();
+		qDebug() << "(onGitAuthenticated) Queued " << connectionQueue_.queuedObjectsCount() << connectionQueue_.waitingObjectsCount();
+		qDebug() << connectionQueue_.queuedObjects() << connectionQueue_.waitingObjects();
 		connectionQueueObject->initiate();
 	}
 	else
@@ -69,10 +65,8 @@ void LYGithubProductBacklog::onGitAuthenticated(bool wasAuthenticated){
 }
 
 void LYGithubProductBacklog::onPopulateProductBacklogReturned(QList<QVariantMap> issues){
-	//disconnect(githubManager_, SIGNAL(issuesReturned(QList<QVariantMap>)), this, SLOT(onPopulateProductBacklogReturned(QList<QVariantMap>)));
-
-	qDebug() << "(onPopulateProductBacklogReturned) Queued " << connectionQueue_.queuedObjects() << connectionQueue_.waitingObjects();
-	//qDebug() << "In onPopulateProductBacklogReturned, queue count " << connectionQueue_.count();
+	qDebug() << "(onPopulateProductBacklogReturned) Queued " << connectionQueue_.queuedObjectsCount() << connectionQueue_.waitingObjectsCount();
+	qDebug() << connectionQueue_.queuedObjects() << connectionQueue_.waitingObjects();
 
 	productBacklogModel_->clear();
 	QString issueItemString;
@@ -138,33 +132,25 @@ void LYGithubProductBacklog::onPopulateProductBacklogReturned(QList<QVariantMap>
 }
 
 void LYGithubProductBacklog::onPopulateProductBacklogOrderingFindIssueReturned(QList<QVariantMap> issues){
-	//disconnect(githubManager_, SIGNAL(issuesReturned(QList<QVariantMap>)), this, SLOT(onPopulateProductBacklogOrderingFindIssueReturned(QList<QVariantMap>)));
-
 	int issueNumber = -1;
 	for(int x = 0; x < issues.count(); x++)
 		if(issues.at(x).value("title").toString() == "ProductBacklogInfo")
 			issueNumber = issues.at(x).value("number").toInt();
 
 	if(issueNumber > 0){
-		//githubManager_->getSingleIssueComments(issueNumber);
-		//connect(githubManager_, SIGNAL(singleIssueCommentReturned(QVariantMap)), this, SLOT(onPopulateProductBacklogOrderingInfoIssueCommentsReturned(QVariantMap)));
-
 		LYConnectionQueueObject *connectionQueueObject = new LYConnectionQueueObject(githubManager_, SIGNAL(singleIssueCommentReturned(QVariantMap)), this, SLOT(onPopulateProductBacklogOrderingInfoIssueCommentsReturned(QVariantMap)), githubManager_, SLOT(getSingleIssueComments(int)), this);
-		//connectionQueue_.push_back(connectionQueueObject);
 		connectionQueue_.pushFrontConnectionQueueObject(connectionQueueObject);
 		QList<QGenericArgument> arguments;
 		arguments.append(Q_ARG(int, issueNumber));
-		qDebug() << "(onPopulateProductBacklogOrderingFindIssueReturned) Queued " << connectionQueue_.queuedObjects() << connectionQueue_.waitingObjects();
+		qDebug() << "(onPopulateProductBacklogOrderingFindIssueReturned) Queued " << connectionQueue_.queuedObjectsCount() << connectionQueue_.waitingObjectsCount();
+		qDebug() << connectionQueue_.queuedObjects() << connectionQueue_.waitingObjects();
 		connectionQueueObject->initiate(arguments);
-		//connectionQueue_.at(0)->initiate(arguments);
-		//qDebug() << "In onPopulateProductBacklogOrderingFindIssueReturned, queue count " << connectionQueue_.count();
 	}
 }
 
 void LYGithubProductBacklog::onPopulateProductBacklogOrderingInfoIssueCommentsReturned(QVariantMap comments){
-	//disconnect(githubManager_, SIGNAL(singleIssueCommentReturned(QVariantMap)), this, SLOT(onPopulateProductBacklogOrderingInfoIssueCommentsReturned(QVariantMap)));
-	//qDebug() << "In onPopulateProductBacklogOrderingInfoIssueCommentsReturned, queue count " << connectionQueue_.count();
-	qDebug() << "(onPopulateProductBacklogOrderingInfoIssueCommentsReturned) Queued " << connectionQueue_.queuedObjects() << connectionQueue_.waitingObjects();
+	qDebug() << "(onPopulateProductBacklogOrderingInfoIssueCommentsReturned) Queued " << connectionQueue_.queuedObjectsCount() << connectionQueue_.waitingObjectsCount();
+	qDebug() << connectionQueue_.queuedObjects() << connectionQueue_.waitingObjects();
 
 	orderingInformation_ = comments.value("body").toString();
 	ordingInformationCommentId_ = comments.value("id").toInt();
@@ -173,9 +159,8 @@ void LYGithubProductBacklog::onPopulateProductBacklogOrderingInfoIssueCommentsRe
 }
 
 void LYGithubProductBacklog::onPopulateProductBacklogOrderingDirectOrderingCommentReturned(QVariantMap comment){
-	//disconnect(githubManager_, SIGNAL(singleCommentReturned(QVariantMap)), this, SLOT(onPopulateProductBacklogOrderingDirectOrderingCommentReturned(QVariantMap)));
-	//qDebug() << "In onPopulateProductBacklogOrderingDirectOrderingCommentReturned, queue count " << connectionQueue_.count();
-	qDebug() << "(onPopulateProductBacklogOrderingDirectOrderingCommentReturned) Queued " << connectionQueue_.queuedObjects() << connectionQueue_.waitingObjects();
+	qDebug() << "(onPopulateProductBacklogOrderingDirectOrderingCommentReturned) Queued " << connectionQueue_.queuedObjectsCount() << connectionQueue_.waitingObjectsCount();
+	qDebug() << connectionQueue_.queuedObjects() << connectionQueue_.waitingObjects();
 
 	emit productBacklogOrderingReturned(comment);
 }
@@ -223,14 +208,10 @@ bool LYGithubProductBacklog::authenticateHelper(){
 	githubManager_->setPassword(password_);
 	githubManager_->setRepository(repository_);
 
-	//connect(githubManager_, SIGNAL(authenticated(bool)), this, SLOT(onGitAuthenticated(bool)));
-	//githubManager_->authenticate();
-
 	LYConnectionQueueObject *connectionQueueObject = new LYConnectionQueueObject(githubManager_, SIGNAL(authenticated(bool)), this, SLOT(onGitAuthenticated(bool)), githubManager_, SLOT(authenticate()), this);
-	//connectionQueue_.push_back(connectionQueueObject);
-	//connectionQueue_.at(0)->initiate();
 	connectionQueue_.pushFrontConnectionQueueObject(connectionQueueObject);
-	qDebug() << "(authenticateHelper) Queued " << connectionQueue_.queuedObjects() << connectionQueue_.waitingObjects();
+	qDebug() << "(authenticateHelper) Queued " << connectionQueue_.queuedObjectsCount() << connectionQueue_.waitingObjectsCount();
+	qDebug() << connectionQueue_.queuedObjects() << connectionQueue_.waitingObjects();
 	connectionQueueObject->initiate();
 
 	return true;
@@ -242,58 +223,29 @@ void LYGithubProductBacklog::populateProductBacklog(){
 	connect(githubManager_, SIGNAL(issuesReturned(QList<QVariantMap>)), this, SLOT(onPopulateProductBacklogReturned(QList<QVariantMap>)));
 }
 
-#include <QMetaMethod>
 void LYGithubProductBacklog::retrieveProductBacklogOrdering(){
 	if(ordingInformationCommentId_ < 0){
 		qDebug() << "Have to do the work from scratch";
 
-		/*
-		const QMetaObject *mo = githubManager_->metaObject();
-		//const char *slotInQuestion = SLOT(getIssues(LYGithubManager::IssuesFilter,LYGithubManager::IssuesState,LYGithubManager::IssuesSort,LYGithubManager::IssuesDirection));
-		const char *slotInQuestion = SLOT(getIssues(LYGithubManager::IssuesFilter,LYGithubManager::IssuesState));
-		QString slotInQuestionAsString = QString("%1").arg(slotInQuestion).remove(0, 1);
-		qDebug() << "Slot is " << slotInQuestion << slotInQuestionAsString;
-		int indexOfMethod = mo->indexOfMethod(slotInQuestionAsString.toAscii());
-		qDebug() << "We have method index of " << indexOfMethod;
-		QMetaMethod mm = mo->method(indexOfMethod);
-		qDebug() << "Info about that call " << mm.parameterTypes();
-		int indexOfOpenParenthesis = slotInQuestionAsString.indexOf('(');
-		QString finalSlotString = slotInQuestionAsString.remove(indexOfOpenParenthesis, slotInQuestionAsString.count()-indexOfOpenParenthesis);
-
-		QList<QGenericArgument> arguments;
-		arguments.append(Q_ARG(LYGithubManager::IssuesFilter, LYGithubManager::IssuesFilterAll));
-		arguments.append(Q_ARG(LYGithubManager::IssuesState, LYGithubManager::IssuesStateClosed));
-		mo->invokeMethod(githubManager_, finalSlotString.toAscii(), arguments.at(0), arguments.at(1));
-		//githubManager_->getIssues(LYGithubManager::IssuesFilterAll, LYGithubManager::IssuesStateClosed);
-
-		connect(githubManager_, SIGNAL(issuesReturned(QList<QVariantMap>)), this, SLOT(onPopulateProductBacklogOrderingFindIssueReturned(QList<QVariantMap>)));
-		*/
-
 		LYConnectionQueueObject *connectionQueueObject = new LYConnectionQueueObject(githubManager_, SIGNAL(issuesReturned(QList<QVariantMap>)), this, SLOT(onPopulateProductBacklogOrderingFindIssueReturned(QList<QVariantMap>)), githubManager_, SLOT(getIssues()), this);
-		//connectionQueue_.push_back(connectionQueueObject);
 		connectionQueue_.pushFrontConnectionQueueObject(connectionQueueObject);
 		QList<QGenericArgument> arguments;
 		arguments.append(Q_ARG(LYGithubManager::IssuesFilter, LYGithubManager::IssuesFilterAll));
 		arguments.append(Q_ARG(LYGithubManager::IssuesState, LYGithubManager::IssuesStateClosed));
-		qDebug() << "(retrieveProductBacklogOrdering A) Queued " << connectionQueue_.queuedObjects() << connectionQueue_.waitingObjects();
+		qDebug() << "(retrieveProductBacklogOrdering A) Queued " << connectionQueue_.queuedObjectsCount() << connectionQueue_.waitingObjectsCount();
+		qDebug() << connectionQueue_.queuedObjects() << connectionQueue_.waitingObjects();
 		connectionQueueObject->initiate(arguments);
-		//connectionQueue_.at(0)->initiate(arguments);
-		//qDebug() << "In retrieveProductBacklogOrdering branch A, queue count " << connectionQueue_.count();
 	}
 	else{
 		qDebug() << "Already know the comment id, so we can cut corners";
-		//githubManager_->getSingleComment(ordingInformationCommentId_);
-		//connect(githubManager_, SIGNAL(singleCommentReturned(QVariantMap)), this, SLOT(onPopulateProductBacklogOrderingDirectOrderingCommentReturned(QVariantMap)));
 
 		LYConnectionQueueObject *connectionQueueObject = new LYConnectionQueueObject(githubManager_, SIGNAL(singleCommentReturned(QVariantMap)), this, SLOT(onPopulateProductBacklogOrderingDirectOrderingCommentReturned(QVariantMap)), githubManager_, SLOT(getSingleComment(int)), this);
-		//connectionQueue_.push_back(connectionQueueObject);
 		connectionQueue_.pushFrontConnectionQueueObject(connectionQueueObject);
 		QList<QGenericArgument> arguments;
 		arguments.append(Q_ARG(int, ordingInformationCommentId_));
-		qDebug() << "(retrieveProductBacklogOrdering B) Queued " << connectionQueue_.queuedObjects() << connectionQueue_.waitingObjects();
+		qDebug() << "(retrieveProductBacklogOrdering B) Queued " << connectionQueue_.queuedObjectsCount() << connectionQueue_.waitingObjectsCount();
+		qDebug() << connectionQueue_.queuedObjects() << connectionQueue_.waitingObjects();
 		connectionQueueObject->initiate(arguments);
-		//connectionQueue_.at(0)->initiate();
-		//qDebug() << "In retrieveProductBacklogOrdering branch B, queue count " << connectionQueue_.count();
 	}
 }
 
@@ -330,6 +282,11 @@ LYConnectionQueueObject::LYConnectionQueueObject(QObject *sender, const char *si
 	initiatorSlot_ = initiatorSlot;
 }
 
+QString LYConnectionQueueObject::signal() const{
+	QString retVal = QString("%1").arg(signal_);
+	return retVal;
+}
+
 void LYConnectionQueueObject::initiate(QList<QGenericArgument> initiatorArguments){
 	connect(sender_, signal_, receiver_, slot_);
 	connect(sender_, signal_, this, SLOT(onSignalReceived()));
@@ -358,8 +315,8 @@ void LYConnectionQueueObject::initiate(QList<QGenericArgument> initiatorArgument
 		initiatorObject_->metaObject()->invokeMethod(initiatorObject_, normalizedInitatorSlot.toAscii(), initiatorArguments.at(0), initiatorArguments.at(1), initiatorArguments.at(2), initiatorArguments.at(3), initiatorArguments.at(4));
 		break;
 	}
-
 	emit initiated(this);
+
 }
 
 void LYConnectionQueueObject::onSignalReceived(){
@@ -375,12 +332,26 @@ LYConnectionQueue::LYConnectionQueue(QObject *parent) :
 
 }
 
-int LYConnectionQueue::queuedObjects() const{
+int LYConnectionQueue::queuedObjectsCount() const{
 	return connetionQueue_.count();
 }
 
-int LYConnectionQueue::waitingObjects() const{
+int LYConnectionQueue::waitingObjectsCount() const{
 	return initiatedButUnfinished_.count();
+}
+
+QStringList LYConnectionQueue::queuedObjects() const{
+	QStringList retVal;
+	for(int x = 0; x < connetionQueue_.count(); x++)
+		retVal.append(connetionQueue_.at(x)->signal());
+	return retVal;
+}
+
+QStringList LYConnectionQueue::waitingObjects() const{
+	QStringList retVal;
+	for(int x = 0; x < initiatedButUnfinished_.count(); x++)
+		retVal.append(initiatedButUnfinished_.at(x)->signal());
+	return retVal;
 }
 
 void LYConnectionQueue::pushFrontConnectionQueueObject(LYConnectionQueueObject *queueObject){
