@@ -10,7 +10,6 @@ class LYConnectionQueueObject : public QObject
 {
 Q_OBJECT
 public:
-	//LYConnectionQueueObject(QObject *sender, const char *signal, QObject *receiver, const char *slot, QObject *initiatorObject, const char *initiatorSlot, QObject *parent = 0);
 	LYConnectionQueueObject(QObject *parent = 0);
 
 	QString signal() const;
@@ -29,9 +28,7 @@ public slots:
 
 	void setInitiatorObject(QObject *initiatorObject);
 	void setInitiatorSlot(const char *initiatorSlot);
-	//void setInitiatorArguments(QList<QGenericArgument> initiatorArguments);
 	void setInitiatorArguments(QVariantList initiatorArguments);
-	//void setInitiatorObject(QObject *initiatorObject, const char *initiatorSlot, QList<QGenericArgument> initiatorArguments = QList<QGenericArgument>());
 	void setInitiatorObject(QObject *initiatorObject, const char *initiatorSlot, QVariantList initiatorArguments = QVariantList());
 
 	void initiate();
@@ -50,7 +47,6 @@ protected:
 	const char *slot_;
 	QObject *initiatorObject_;
 	const char *initiatorSlot_;
-	//QList<QGenericArgument> initiatorArguments_;
 	QVariantList initiatorArguments_;
 };
 
@@ -71,6 +67,8 @@ public:
 
 public slots:
 	void startQueue();
+	void stopQueue();
+	void clearQueue();
 
 	void pushFrontConnectionQueueObject(LYConnectionQueueObject *queueObject);
 	void pushBackConnectionQueueObject(LYConnectionQueueObject *queueObject);
@@ -82,6 +80,8 @@ protected slots:
 protected:
 	QList<LYConnectionQueueObject*> connetionQueue_;
 	QList<LYConnectionQueueObject*> initiatedButUnfinished_;
+
+	bool queueStopped_;
 };
 
 class LYGithubProductBacklog : public QObject
@@ -147,6 +147,9 @@ protected:
 
 	void printGithubMapRecursive(QVariantMap map, int indentation);
 
+	void createStartupConnectionQueue();
+	void createUploadChangesConnectionQueue();
+
 protected:
 	LYGithubManager *githubManager_;
 
@@ -167,7 +170,8 @@ protected:
 	/// String to hold the repository
 	QString repository_;
 
-	LYConnectionQueue connectionQueue_;
+	LYConnectionQueue startupConnectionQueue_;
+	LYConnectionQueue uploadChangesConnectionQueue_;
 };
 
 #endif // LYGITHUBPRODUCTBACKLOG_H

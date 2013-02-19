@@ -14,10 +14,6 @@
 class LYGithubManager : public QObject
 {
 	Q_OBJECT
-	//Q_ENUMS(IssuesFilter)
-	//Q_ENUMS(IssuesState)
-	//Q_ENUMS(IssuesSort)
-	//Q_ENUMS(IssuesDirection)
 
 public:
 	/// Enum for the issues filter type.

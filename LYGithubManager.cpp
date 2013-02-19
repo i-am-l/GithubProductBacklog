@@ -150,8 +150,6 @@ void LYGithubManager::getIssues(LYGithubManager::IssuesFilter filter, LYGithubMa
 	}
 	request.setUrl(QUrl(issuesURL+issuesOptions));
 
-	qDebug() << "Get issues as " << issuesURL << issuesOptions;
-
 	QString userInfo = userName_+":"+password_;
 	QByteArray userData = userInfo.toLocal8Bit().toBase64();
 	QString headerData = "Basic " + userData;
