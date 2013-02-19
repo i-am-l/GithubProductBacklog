@@ -10,12 +10,31 @@ class LYConnectionQueueObject : public QObject
 {
 Q_OBJECT
 public:
-	LYConnectionQueueObject(QObject *sender, const char *signal, QObject *receiver, const char *slot, QObject *initiatorObject, const char *initiatorSlot, QObject *parent = 0);
+	//LYConnectionQueueObject(QObject *sender, const char *signal, QObject *receiver, const char *slot, QObject *initiatorObject, const char *initiatorSlot, QObject *parent = 0);
+	LYConnectionQueueObject(QObject *parent = 0);
 
 	QString signal() const;
 
+	void printInitiatorArguments() const;
+
 public slots:
-	void initiate(QList<QGenericArgument> initiatorArguments = QList<QGenericArgument>());
+	void setSender(QObject *sender);
+	void setSignal(const char *signal);
+	void setSender(QObject *sender, const char *signal);
+
+	void setReceiver(QObject *receiver);
+	void setSlot(const char *slot);
+	void setReceiver(QObject *receiver, const char *slot);
+
+
+	void setInitiatorObject(QObject *initiatorObject);
+	void setInitiatorSlot(const char *initiatorSlot);
+	//void setInitiatorArguments(QList<QGenericArgument> initiatorArguments);
+	void setInitiatorArguments(QVariantList initiatorArguments);
+	//void setInitiatorObject(QObject *initiatorObject, const char *initiatorSlot, QList<QGenericArgument> initiatorArguments = QList<QGenericArgument>());
+	void setInitiatorObject(QObject *initiatorObject, const char *initiatorSlot, QVariantList initiatorArguments = QVariantList());
+
+	void initiate();
 
 protected slots:
 	void onSignalReceived();
@@ -31,6 +50,8 @@ protected:
 	const char *slot_;
 	QObject *initiatorObject_;
 	const char *initiatorSlot_;
+	//QList<QGenericArgument> initiatorArguments_;
+	QVariantList initiatorArguments_;
 };
 
 class LYConnectionQueue : public QObject
@@ -45,8 +66,14 @@ public:
 	QStringList queuedObjects() const;
 	QStringList waitingObjects() const;
 
+	LYConnectionQueueObject* first();
+	LYConnectionQueueObject* objectAt(int index);
+
 public slots:
+	void startQueue();
+
 	void pushFrontConnectionQueueObject(LYConnectionQueueObject *queueObject);
+	void pushBackConnectionQueueObject(LYConnectionQueueObject *queueObject);
 
 protected slots:
 	void onInitiated(LYConnectionQueueObject *queueObject);
@@ -117,7 +144,6 @@ protected slots:
 protected:
 	/// Helper function for authentication. Won't run without values for username/password/repository
 	bool authenticateHelper();
-
 
 	void printGithubMapRecursive(QVariantMap map, int indentation);
 

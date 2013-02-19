@@ -14,6 +14,10 @@
 class LYGithubManager : public QObject
 {
 	Q_OBJECT
+	//Q_ENUMS(IssuesFilter)
+	//Q_ENUMS(IssuesState)
+	//Q_ENUMS(IssuesSort)
+	//Q_ENUMS(IssuesDirection)
 
 public:
 	/// Enum for the issues filter type.
@@ -124,5 +128,10 @@ protected:
 	/// Holds the name of the repository of interest.
 	QString repository_;
 };
+
+Q_DECLARE_METATYPE(LYGithubManager::IssuesFilter)
+Q_DECLARE_METATYPE(LYGithubManager::IssuesState)
+Q_DECLARE_METATYPE(LYGithubManager::IssuesSort)
+Q_DECLARE_METATYPE(LYGithubManager::IssuesDirection)
 
 #endif // LYGITHUBMANAGER_H

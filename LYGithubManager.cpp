@@ -5,12 +5,22 @@
 LYGithubManager::LYGithubManager(QObject *parent) :
 	QObject(parent)
 {
+	//qRegisterMetaType<LYGithubManager::IssuesFilter>("IssuesFilter");
+	//qRegisterMetaType<LYGithubManager::IssuesState>("IssuesState");
+	//qRegisterMetaType<LYGithubManager::IssuesSort>("IssuesSort");
+	//qRegisterMetaType<LYGithubManager::IssuesDirection>("IssuesDirection");
+
 	initialize();
 }
 
 LYGithubManager::LYGithubManager(const QString &userName, const QString &password, const QString &repository, QObject *parent) :
 	QObject(parent)
 {
+	//qRegisterMetaType<LYGithubManager::IssuesFilter>("IssuesFilter");
+	//qRegisterMetaType<LYGithubManager::IssuesState>("IssuesState");
+	//qRegisterMetaType<LYGithubManager::IssuesSort>("IssuesSort");
+	//qRegisterMetaType<LYGithubManager::IssuesDirection>("IssuesDirection");
+
 	initialize();
 	userName_ = userName;
 	password_ = password;
@@ -102,6 +112,9 @@ void LYGithubManager::getIssues(LYGithubManager::IssuesFilter filter, LYGithubMa
 		break;
 	case LYGithubManager::IssuesFilterAll:
 		issuesOptions.append("all&");
+		break;
+	default:
+		issuesOptions.append("all&");
 	}
 	issuesOptions.append("state=");
 	switch(state){
@@ -111,6 +124,8 @@ void LYGithubManager::getIssues(LYGithubManager::IssuesFilter filter, LYGithubMa
 	case LYGithubManager::IssuesStateClosed:
 		issuesOptions.append("closed&");
 		break;
+	default:
+		issuesOptions.append("open&");
 	}
 	issuesOptions.append("sort=");
 	switch(sort){
@@ -134,6 +149,8 @@ void LYGithubManager::getIssues(LYGithubManager::IssuesFilter filter, LYGithubMa
 		break;
 	}
 	request.setUrl(QUrl(issuesURL+issuesOptions));
+
+	qDebug() << "Get issues as " << issuesURL << issuesOptions;
 
 	QString userInfo = userName_+":"+password_;
 	QByteArray userData = userInfo.toLocal8Bit().toBase64();
