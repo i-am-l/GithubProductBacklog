@@ -14,9 +14,7 @@ Q_OBJECT
 public:
 	LYGithubProductBacklog(const QString &username = QString(), const QString &password = QString(), const QString &repository = QString(), QObject *parent = 0);
 
-	QStandardItemModel* model() const { return productBacklogModel_; }
-
-	QAbstractItemModel* newModel() const;
+	QAbstractItemModel* model() const;
 
 public slots:
 	/// Uploads changes made in the model to the remote repository
@@ -61,7 +59,7 @@ protected slots:
 	/// Handles changing the activeChanged() status when changes are successfully uploaded
 	void onUploadChangesReturned(QVariantMap comment);
 
-	void onItemChanged(QStandardItem *item);
+	void onProductBacklogModelRefreshed();
 
 protected:
 	/// Helper function for authentication. Won't run without values for username/password/repository
@@ -77,9 +75,7 @@ protected:
 protected:
 	LYGithubManager *githubManager_;
 
-	QStandardItemModel *productBacklogModel_;
-
-	LYProductBacklogModel *newProductBacklogModel_;
+	LYProductBacklogModel *productBacklogModel_;
 
 	QString orderingInformation_;
 	/// Id of the comment that holds the product backlog ordering information

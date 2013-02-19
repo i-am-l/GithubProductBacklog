@@ -76,8 +76,7 @@ protected slots:
 	void onActiveChangesChanged(bool hasActiveChanges);
 
 protected:
-	/// View for the list model coming from the product backlog
-	QListView *listView_;
+	/// View for the tree model coming from the product backlog
 	QTreeView *treeView_;
 	/// Push button to upload changes that have been made
 	QPushButton *uploadChangesButton_;

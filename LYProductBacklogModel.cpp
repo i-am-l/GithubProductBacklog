@@ -252,6 +252,7 @@ bool LYProductBacklogModel::dropMimeData(const QMimeData *data, Qt::DropAction a
 
 			// Begin actually changing things
 			emit beginResetModel();
+			emit modelAboutToBeRefreshed();
 
 			// Remove us and our children from the flat list
 			for(int x = 0; x < listToMove.count(); x++)
@@ -272,6 +273,7 @@ bool LYProductBacklogModel::dropMimeData(const QMimeData *data, Qt::DropAction a
 			}
 			// Finished actually changing things
 			emit endResetModel();
+			emit modelRefreshed();
 
 			return true;
 		}

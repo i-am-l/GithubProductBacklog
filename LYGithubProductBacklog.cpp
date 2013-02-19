@@ -11,14 +11,8 @@ LYGithubProductBacklog::LYGithubProductBacklog(const QString &username, const QS
 	password_ = password;
 	repository_ = repository;
 
-	productBacklogModel_ = new QStandardItemModel(this);
-	QStandardItem *item = new QStandardItem("Not Connected");
-	productBacklogModel_->appendRow(item);
-
-	newProductBacklogModel_ = new LYProductBacklogModel(this);
-
-	connect(productBacklogModel_, SIGNAL(itemChanged(QStandardItem*)), this, SLOT(onItemChanged(QStandardItem*)));
-	productBacklogModel_->setSupportedDragActions(Qt::MoveAction);
+	productBacklogModel_ = new LYProductBacklogModel(this);
+	connect(productBacklogModel_, SIGNAL(modelRefreshed()), this, SLOT(onProductBacklogModelRefreshed()));
 
 	githubManager_ = new LYGithubManager(this);
 
@@ -26,8 +20,8 @@ LYGithubProductBacklog::LYGithubProductBacklog(const QString &username, const QS
 	authenticateHelper();
 }
 
-QAbstractItemModel* LYGithubProductBacklog::newModel() const{
-	return newProductBacklogModel_;
+QAbstractItemModel* LYGithubProductBacklog::model() const{
+	return productBacklogModel_;
 }
 
 void LYGithubProductBacklog::uploadChanges(){
@@ -67,35 +61,11 @@ void LYGithubProductBacklog::onGitAuthenticated(bool wasAuthenticated){
 }
 
 void LYGithubProductBacklog::onPopulateProductBacklogReturned(QList<QVariantMap> issues){
-	productBacklogModel_->clear();
-	QString issueItemString;
-	QStandardItem *issueItem;
-	QMap<int, QStandardItem*> allIssues;
-	for(int x = 0; x < issues.count(); x++){
-		issueItemString = QString("Issue %1: %2").arg(issues.at(x).value("number").toString()).arg(issues.at(x).value("title").toString());
-		issueItem = new QStandardItem(issueItemString);
-		issueItem->setData(QVariant(issues.at(x).value("number").toInt()), Qt::UserRole);
-		issueItem->setEditable(false);
-		issueItem->setDragEnabled(true);
-		issueItem->setDropEnabled(false);
-		allIssues.insert(issues.at(x).value("number").toInt(), issueItem);
-	}
-
-	QString partialOrderingParse = orderingInformation_;
-	partialOrderingParse.replace('{', ';');
-	partialOrderingParse.replace("};", "");
-	QStringList orderingList = partialOrderingParse.split(";", QString::SkipEmptyParts);
-	int issueNumber;
-	for(int x = 0; x < orderingList.count(); x++){
-		issueNumber = orderingList.at(x).toInt();
-		productBacklogModel_->appendRow(allIssues.value(issueNumber));
-	}
-
-	newProductBacklogModel_->parseList(orderingInformation_, issues);
-	qDebug() << "Number of ordered issues not found: " << newProductBacklogModel_->orderedIssuesNotFound().count();
-	qDebug() << newProductBacklogModel_->orderedIssuesNotFound();
-	qDebug() << "Number of unordered issues found: " << newProductBacklogModel_->unorderedIssuesFound().count();
-	qDebug() << newProductBacklogModel_->unorderedIssuesFound();
+	productBacklogModel_->parseList(orderingInformation_, issues);
+	qDebug() << "Number of ordered issues not found: " << productBacklogModel_->orderedIssuesNotFound().count();
+	qDebug() << productBacklogModel_->orderedIssuesNotFound();
+	qDebug() << "Number of unordered issues found: " << productBacklogModel_->unorderedIssuesFound().count();
+	qDebug() << productBacklogModel_->unorderedIssuesFound();
 }
 
 void LYGithubProductBacklog::onPopulateProductBacklogOrderingFindIssueReturned(QList<QVariantMap> issues){
@@ -135,18 +105,11 @@ void LYGithubProductBacklog::onUploadChangedCheckedOrderingReturn(QVariantMap co
 	if(repositoryCurrentOrdering == orderingInformation_){
 		qDebug() << "No repository side changes, proceeding with updates";
 
-
-		QString newOrderingInformation;
-		for(int x = 0; x < productBacklogModel_->rowCount(); x++)
-			newOrderingInformation.append(QString("%1;").arg(productBacklogModel_->item(x)->data(Qt::UserRole).toInt()));
-
+		QString newOrderingInformation = productBacklogModel_->generateListNotation();
 		QVariantList arguments;
 		arguments.append(QVariant::fromValue(ordingInformationCommentId_));
 		arguments.append(QVariant::fromValue(newOrderingInformation));
 		uploadChangesConnectionQueue_.first()->setInitiatorArguments(arguments);
-
-		uploadChangesConnectionQueue_.stopQueue();
-		uploadChangesConnectionQueue_.clearQueue();
 	}
 	else{
 		uploadChangesConnectionQueue_.stopQueue();
@@ -162,10 +125,13 @@ void LYGithubProductBacklog::onUploadChangesReturned(QVariantMap comment){
 	emit activeChanges(false);
 }
 
-void LYGithubProductBacklog::onItemChanged(QStandardItem *item){
-	Q_UNUSED(item)
-	if(!activeChanges_){
-		activeChanges_ = true;
+void LYGithubProductBacklog::onProductBacklogModelRefreshed(){
+	bool hasChanges = false;
+	if(orderingInformation_ != productBacklogModel_->generateListNotation())
+		hasChanges = true;
+
+	if(activeChanges_ != hasChanges){
+		activeChanges_ = hasChanges;
 		emit activeChanges(activeChanges_);
 	}
 }

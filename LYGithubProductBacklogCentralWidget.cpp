@@ -90,16 +90,8 @@ LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(QWidget
 {
 	productBacklog_ = new LYGithubProductBacklog();
 
-	listView_ = new QListView(this);
-	listView_->setModel(productBacklog_->model());
-	listView_->setSelectionMode(QAbstractItemView::SingleSelection);
-	listView_->setDragEnabled(true);
-	listView_->viewport()->setAcceptDrops(true);
-	listView_->setDropIndicatorShown(true);
-	listView_->setDragDropMode(QListView::InternalMove);
-
 	treeView_ = new QTreeView();
-	treeView_->setModel(productBacklog_->newModel());
+	treeView_->setModel(productBacklog_->model());
 	treeView_->setSelectionBehavior(QAbstractItemView::SelectItems);
 	treeView_->setSelectionMode(QAbstractItemView::SingleSelection);
 	treeView_->setDragEnabled(true);
@@ -112,7 +104,6 @@ LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(QWidget
 
 	QVBoxLayout *vl = new QVBoxLayout();
 	vl->addWidget(uploadChangesButton_);
-	vl->addWidget(listView_);
 	vl->addWidget(treeView_);
 
 	setLayout(vl);
