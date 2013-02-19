@@ -5,84 +5,7 @@
 
 #include "LYGithubManager.h"
 #include "LYProductBacklogModel.h"
-
-class LYConnectionQueueObject : public QObject
-{
-Q_OBJECT
-public:
-	LYConnectionQueueObject(QObject *parent = 0);
-
-	QString signal() const;
-
-	void printInitiatorArguments() const;
-
-public slots:
-	void setSender(QObject *sender);
-	void setSignal(const char *signal);
-	void setSender(QObject *sender, const char *signal);
-
-	void setReceiver(QObject *receiver);
-	void setSlot(const char *slot);
-	void setReceiver(QObject *receiver, const char *slot);
-
-
-	void setInitiatorObject(QObject *initiatorObject);
-	void setInitiatorSlot(const char *initiatorSlot);
-	void setInitiatorArguments(QVariantList initiatorArguments);
-	void setInitiatorObject(QObject *initiatorObject, const char *initiatorSlot, QVariantList initiatorArguments = QVariantList());
-
-	void initiate();
-
-protected slots:
-	void onSignalReceived();
-
-signals:
-	void initiated(LYConnectionQueueObject *queueObject);
-	void finished(LYConnectionQueueObject *queueObject);
-
-protected:
-	QObject *sender_;
-	const char *signal_;
-	QObject *receiver_;
-	const char *slot_;
-	QObject *initiatorObject_;
-	const char *initiatorSlot_;
-	QVariantList initiatorArguments_;
-};
-
-class LYConnectionQueue : public QObject
-{
-Q_OBJECT
-public:
-	LYConnectionQueue(QObject *parent = 0);
-
-	int queuedObjectsCount() const;
-	int waitingObjectsCount() const;
-
-	QStringList queuedObjects() const;
-	QStringList waitingObjects() const;
-
-	LYConnectionQueueObject* first();
-	LYConnectionQueueObject* objectAt(int index);
-
-public slots:
-	void startQueue();
-	void stopQueue();
-	void clearQueue();
-
-	void pushFrontConnectionQueueObject(LYConnectionQueueObject *queueObject);
-	void pushBackConnectionQueueObject(LYConnectionQueueObject *queueObject);
-
-protected slots:
-	void onInitiated(LYConnectionQueueObject *queueObject);
-	void onFinished(LYConnectionQueueObject *queueObject);
-
-protected:
-	QList<LYConnectionQueueObject*> connetionQueue_;
-	QList<LYConnectionQueueObject*> initiatedButUnfinished_;
-
-	bool queueStopped_;
-};
+#include "LYConnectionQueue.h"
 
 class LYGithubProductBacklog : public QObject
 {
@@ -135,11 +58,6 @@ protected slots:
 	void onUploadChangesReturned(QVariantMap comment);
 
 	void onItemChanged(QStandardItem *item);
-
-	/// Get the issues from the Github repository to populate the list
-	void populateProductBacklog();
-	/// Get the current ordering for the backlog from the github repository, may be a multi-stage process
-	void retrieveProductBacklogOrdering();
 
 protected:
 	/// Helper function for authentication. Won't run without values for username/password/repository
