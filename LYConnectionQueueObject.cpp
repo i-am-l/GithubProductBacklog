@@ -6,11 +6,6 @@ LYConnectionQueueObject::LYConnectionQueueObject(QObject *parent) :
 
 }
 
-QString LYConnectionQueueObject::signal() const{
-	QString retVal = QString("%1").arg(signal_);
-	return retVal;
-}
-
 void LYConnectionQueueObject::setSender(QObject *sender){
 	sender_ = sender;
 }

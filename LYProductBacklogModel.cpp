@@ -293,6 +293,43 @@ Qt::DropActions LYProductBacklogModel::supportedDropActions() const{
 	return (Qt::MoveAction | Qt::IgnoreAction);
 }
 
+#include <QDebug>
+void LYProductBacklogModel::parseList(const QString &orderingInformation, QList<QVariantMap> issues){
+	QMap<int, int> issueNumberToParentIssueNumber = parseListNotation(orderingInformation);
+
+	QString partialOrderingParse = orderingInformation;
+	partialOrderingParse.replace('{', ';');
+	partialOrderingParse.replace("};", "");
+	QStringList orderingList = partialOrderingParse.split(";", QString::SkipEmptyParts);
+	QList<int> localOrderingList;
+	QList<int> localMissingList;
+	for(int x = 0; x < orderingList.count(); x++)
+		localOrderingList.append(orderingList.at(x).toInt());
+
+	clear();
+
+	LYProductBacklogItem *newIssueItem;
+	QMap<int, LYProductBacklogItem*> newAllIssues;
+	for(int x = 0; x < issues.count(); x++){
+		newIssueItem = new LYProductBacklogItem(issues.at(x).value("number").toString() + " - " + issues.at(x).value("title").toString(), issues.at(x).value("number").toInt(), issueNumberToParentIssueNumber.value(issues.at(x).value("number").toInt()));
+		newAllIssues.insert(newIssueItem->issueNumber(), newIssueItem);
+		if(localOrderingList.contains(newIssueItem->issueNumber()))
+			localOrderingList.removeAll(newIssueItem->issueNumber());
+		else
+			localMissingList.append(newIssueItem->issueNumber());
+	}
+
+	orderedIssuesNotFound_.clear();
+	unorderedIssuesFound_.clear();
+	orderedIssuesNotFound_ = localOrderingList;
+	unorderedIssuesFound_ = localMissingList;
+
+	QList<int> newOrderingInformation;
+	for(int x = 0; x < orderingList.count(); x++)
+		newOrderingInformation.append(orderingList.at(x).toInt());
+	setInternalData(newAllIssues, newOrderingInformation);
+}
+
 void LYProductBacklogModel::setInternalData(QMap<int, LYProductBacklogItem *> allIssues, QList<int> orderingInformation){
 	emit beginResetModel();
 	allIssues_ = allIssues;
@@ -310,6 +347,39 @@ QString LYProductBacklogModel::generateListNotation() const{
 	for(int x = 0; x < rowCount(QModelIndex()); x++)
 		retVal.append(recursiveGenerateNotation(productBacklogItem(index(x, 0, QModelIndex()))));
 	return retVal;
+}
+
+const QList<int> LYProductBacklogModel::orderedIssuesNotFound() const{
+	return orderedIssuesNotFound_;
+}
+
+const QList<int> LYProductBacklogModel::unorderedIssuesFound() const{
+	return unorderedIssuesFound_;
+}
+
+QMap<int, int> LYProductBacklogModel::parseListNotation(const QString &orderingInformation) const{
+	QMap<int, int> issueNumberToParentIssueNumber;
+	QList<int> parentStack;
+	parentStack.push_front(-1);
+	int currentIssueNumber;
+	for(int x = 0; x < orderingInformation.count(); x++){
+		if( (orderingInformation.at(x) == '{') || (orderingInformation.at(x) == '}') ){
+			//do nothing
+		}
+		else if(orderingInformation.at(x) == ';'){
+			parentStack.pop_front();
+		}
+		else{
+			QString numberString;
+			numberString.append(orderingInformation.at(x));
+			while(orderingInformation.at(x+1).isDigit())
+				numberString.append(orderingInformation.at(++x));
+			currentIssueNumber = numberString.toInt();
+			issueNumberToParentIssueNumber.insert(currentIssueNumber, parentStack.front());
+			parentStack.push_front(currentIssueNumber);
+		}
+	}
+	return issueNumberToParentIssueNumber;
 }
 
 QList<int> LYProductBacklogModel::childrenOf(LYProductBacklogItem *pbItem) const{

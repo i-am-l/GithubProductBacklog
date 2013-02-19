@@ -40,13 +40,18 @@ public:
 	/// Re-implemented from QAbstractItemModel to deal with dropping when re-ordering the queue via drag-and-drop
 	virtual Qt::DropActions supportedDropActions() const;
 
+	void parseList(const QString &orderingInformation, QList<QVariantMap> issues);
 	void setInternalData(QMap<int, LYProductBacklogItem*> allIssues, QList<int> orderingInformation);
 
 	void clear();
 
 	QString generateListNotation() const;
 
+	const QList<int> orderedIssuesNotFound() const;
+	const QList<int> unorderedIssuesFound() const;
+
 protected:
+	QMap<int, int> parseListNotation(const QString &orderingInformation) const;
 	QList<int> childrenOf(LYProductBacklogItem *pbItem) const;
 
 	QString recursiveGenerateNotation(LYProductBacklogItem *pbItem) const;
@@ -60,6 +65,9 @@ signals:
 protected:
 	QMap<int, LYProductBacklogItem*> allIssues_;
 	QList<int> orderingInformation_;
+
+	QList<int> orderedIssuesNotFound_;
+	QList<int> unorderedIssuesFound_;
 };
 
 class LYProductBacklogItem {

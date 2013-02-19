@@ -91,43 +91,11 @@ void LYGithubProductBacklog::onPopulateProductBacklogReturned(QList<QVariantMap>
 		productBacklogModel_->appendRow(allIssues.value(issueNumber));
 	}
 
-	qDebug() << "Count on ordering list: " << orderingList.count();
-	qDebug() << "Count on issues list: " << issues.count();
-
-	QMap<int, int> issueNumberToParentIssueNumber;
-	QList<int> parentStack;
-	parentStack.push_front(-1);
-	int currentIssueNumber;
-	for(int x = 0; x < orderingInformation_.count(); x++){
-		if( (orderingInformation_.at(x) == '{') || (orderingInformation_.at(x) == '}') ){
-			//do nothing
-		}
-		else if(orderingInformation_.at(x) == ';'){
-			parentStack.pop_front();
-		}
-		else{
-			QString numberString;
-			numberString.append(orderingInformation_.at(x));
-			while(orderingInformation_.at(x+1).isDigit())
-				numberString.append(orderingInformation_.at(++x));
-			currentIssueNumber = numberString.toInt();
-			issueNumberToParentIssueNumber.insert(currentIssueNumber, parentStack.front());
-			parentStack.push_front(currentIssueNumber);
-		}
-	}
-
-	newProductBacklogModel_->clear();
-	LYProductBacklogItem *newIssueItem;
-	QMap<int, LYProductBacklogItem*> newAllIssues;
-	for(int x = 0; x < issues.count(); x++){
-		newIssueItem = new LYProductBacklogItem(issues.at(x).value("number").toString() + " - " + issues.at(x).value("title").toString(), issues.at(x).value("number").toInt(), issueNumberToParentIssueNumber.value(issues.at(x).value("number").toInt()));
-		newAllIssues.insert(newIssueItem->issueNumber(), newIssueItem);
-	}
-
-	QList<int> newOrderingInformation;
-	for(int x = 0; x < orderingList.count(); x++)
-		newOrderingInformation.append(orderingList.at(x).toInt());
-	newProductBacklogModel_->setInternalData(newAllIssues, newOrderingInformation);
+	newProductBacklogModel_->parseList(orderingInformation_, issues);
+	qDebug() << "Number of ordered issues not found: " << newProductBacklogModel_->orderedIssuesNotFound().count();
+	qDebug() << newProductBacklogModel_->orderedIssuesNotFound();
+	qDebug() << "Number of unordered issues found: " << newProductBacklogModel_->unorderedIssuesFound().count();
+	qDebug() << newProductBacklogModel_->unorderedIssuesFound();
 }
 
 void LYGithubProductBacklog::onPopulateProductBacklogOrderingFindIssueReturned(QList<QVariantMap> issues){
@@ -250,7 +218,6 @@ void LYGithubProductBacklog::createStartupConnectionQueue(){
 	QVariantList arguments1;
 	arguments1.append(QVariant::fromValue(LYGithubManager::IssuesFilterAll));
 	arguments1.append(QVariant::fromValue(LYGithubManager::IssuesStateClosed));
-
 	connectionQueueObject->setInitiatorObject(githubManager_, SLOT(getIssues()), arguments1);
 	startupConnectionQueue_.pushBackConnectionQueueObject(connectionQueueObject);
 

@@ -16,20 +16,6 @@ int LYConnectionQueue::waitingObjectsCount() const{
 	return initiatedButUnfinished_.count();
 }
 
-QStringList LYConnectionQueue::queuedObjects() const{
-	QStringList retVal;
-	for(int x = 0; x < connetionQueue_.count(); x++)
-		retVal.append(connetionQueue_.at(x)->signal());
-	return retVal;
-}
-
-QStringList LYConnectionQueue::waitingObjects() const{
-	QStringList retVal;
-	for(int x = 0; x < initiatedButUnfinished_.count(); x++)
-		retVal.append(initiatedButUnfinished_.at(x)->signal());
-	return retVal;
-}
-
 LYConnectionQueueObject* LYConnectionQueue::first(){
 	return connetionQueue_.first();
 }

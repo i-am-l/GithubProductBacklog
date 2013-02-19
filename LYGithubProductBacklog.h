@@ -19,6 +19,7 @@ public:
 	QAbstractItemModel* newModel() const;
 
 public slots:
+	/// Uploads changes made in the model to the remote repository
 	void uploadChanges();
 
 	/// Sets the username
@@ -38,6 +39,7 @@ signals:
 	/// Reports that the changes were uploaded successfully (or unsuccessfully)
 	void changesUploaded(bool successfullyUploaded);
 
+	/// Reports that there are active changes to the model that are not yet uploaded to the remote repository
 	void activeChanges(bool hasActiveChanges);
 
 protected slots:
@@ -54,7 +56,9 @@ protected slots:
 	/// Handles the return of the product backlog ordering request (directly retrieving the comment if we know the commend id)
 	void onPopulateProductBacklogOrderingDirectOrderingCommentReturned(QVariantMap comment);
 
+	/// Handles checking for server side changes that may have taken place and if none are detected setting the issue number and new string for upload to the remote repository
 	void onUploadChangedCheckedOrderingReturn(QVariantMap comment);
+	/// Handles changing the activeChanged() status when changes are successfully uploaded
 	void onUploadChangesReturned(QVariantMap comment);
 
 	void onItemChanged(QStandardItem *item);
@@ -65,7 +69,9 @@ protected:
 
 	void printGithubMapRecursive(QVariantMap map, int indentation);
 
+	/// Creates the list of connectionQueueObjects and places them in the startupConnectionQueue (clears the queue if necessary)
 	void createStartupConnectionQueue();
+	/// Creates the list of connectionQueueObjects and places them in the uploadChangesConnectionQueue (clears the queue if necessary)
 	void createUploadChangesConnectionQueue();
 
 protected:
@@ -79,6 +85,7 @@ protected:
 	/// Id of the comment that holds the product backlog ordering information
 	int ordingInformationCommentId_;
 
+	/// Holds whether or not there are local model changes that need to be uploaded to the remote repository
 	bool activeChanges_;
 
 	/// String to hold the user name
@@ -88,7 +95,9 @@ protected:
 	/// String to hold the repository
 	QString repository_;
 
+	/// The queue of connections to startup the product backlog (authenticate, find magic issue, parse magic issue for ordering info, get all issues)
 	LYConnectionQueue startupConnectionQueue_;
+	/// The queue of connections to upload changes (check magic issue for server side changes, edit magic issue with new ordering info)
 	LYConnectionQueue uploadChangesConnectionQueue_;
 };
 
