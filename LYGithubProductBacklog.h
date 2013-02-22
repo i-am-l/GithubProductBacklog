@@ -27,6 +27,10 @@ public slots:
 	/// Sets the repository
 	void setRepository(const QString &repository);
 
+	void acceptAppendMissingIssues();
+	void acceptRemoveClosedIssuesWithoutChildren();
+	void acceptRemoveClosedIssuesWithChildren();
+
 signals:
 	/// Reports that authentication was successful (or unsuccessful)
 	void authenticated(bool isAuthenticated);
@@ -39,6 +43,10 @@ signals:
 
 	/// Reports that there are active changes to the model that are not yet uploaded to the remote repository
 	void activeChanges(bool hasActiveChanges);
+
+	void detectedMissingIssues(QList<int> missingIssuesNumbers);
+	void detectedClosedIssuesWithoutChildren(QList<int> closedIssuesWithoutChildren);
+	void detectedClosedIssuesWithChildren(QList<int> closedIssuesWithChildren);
 
 protected slots:
 	/// Handles the return of the authentication request

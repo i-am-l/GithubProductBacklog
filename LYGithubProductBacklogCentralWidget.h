@@ -63,6 +63,9 @@ public:
 	/// Constructor
 	LYGithubProductBacklogCentralWidget(QWidget *parent = 0);
 
+signals:
+	void requestQuit();
+
 protected slots:
 	/// Handles the communication from the authentication view regarding new username, password, and repository
 	void onSubmitAuthenticationInformationAvailable(const QString &username, const QString &password, const QString &repository);
@@ -74,6 +77,10 @@ protected slots:
 
 	/// Enables and disables the uploadChangesButton based on whether the list has been modified by the user
 	void onActiveChangesChanged(bool hasActiveChanges);
+
+	void onDetectedMissingIssues(QList<int> missingIssuesNumbers);
+	void onDetectedClosedIssuesWithoutChildren(QList<int> closedIssuesWithoutChildren);
+	void onDetectedClosedIssuesWithChildren(QList<int> closedIssuesWithChildren);
 
 protected:
 	/// View for the tree model coming from the product backlog

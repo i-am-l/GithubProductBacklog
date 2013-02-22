@@ -13,6 +13,9 @@ public:
 	LYGithubProductBacklogMainWindow(QWidget *parent = 0);
 	~LYGithubProductBacklogMainWindow();
 
+protected slots:
+	void onRequestQuit();
+
 protected:
 	LYGithubProductBacklogCentralWidget *mainWidget_;
 };

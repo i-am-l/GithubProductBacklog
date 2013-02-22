@@ -9,6 +9,14 @@ class LYProductBacklogModel : public QAbstractItemModel
 {
 Q_OBJECT
 public:
+	enum ProductBacklogSanityCheck{
+		SanityCheckPassed = 0x0,
+		SanityCheckFailedMissingIssue = 0x1,
+		SanityCheckFailedFalseOrderedIssueNoChildren = 0x2,
+		SanityCheckFailedFalseOrderedIssueWithChildren = 0x4
+	};
+	Q_DECLARE_FLAGS(ProductBacklogSanityChecks, ProductBacklogSanityCheck)
+
 	LYProductBacklogModel(QObject *parent = 0);
 
 	// Re-implemented public functions from QAbstractItemModel
@@ -40,14 +48,16 @@ public:
 	/// Re-implemented from QAbstractItemModel to deal with dropping when re-ordering the queue via drag-and-drop
 	virtual Qt::DropActions supportedDropActions() const;
 
-	void parseList(const QString &orderingInformation, QList<QVariantMap> issues);
-	void setInternalData(QMap<int, LYProductBacklogItem*> allIssues, QList<int> orderingInformation);
+	LYProductBacklogModel::ProductBacklogSanityChecks parseList(const QString &orderingInformation, QList<QVariantMap> issues);
+	bool appendMissingIssues(const QString &orderingInformation, QList<QVariantMap> issues);
+	bool removeClosedIssuesWithoutChildren(const QString &orderingInformation, QList<QVariantMap> issues);
 
 	void clear();
 
 	QString generateListNotation() const;
 
-	const QList<int> orderedIssuesNotFound() const;
+	const QList<int> orderedIssuesWithoutChildrenNotFound() const;
+	const QList<int> orderedIssuesWithChildrenNotFound() const;
 	const QList<int> unorderedIssuesFound() const;
 
 protected:
@@ -55,6 +65,11 @@ protected:
 	QList<int> childrenOf(LYProductBacklogItem *pbItem) const;
 
 	QString recursiveGenerateNotation(LYProductBacklogItem *pbItem) const;
+
+	QStringList internalParseToFlatList(const QString &orderingInformation) const;
+	LYProductBacklogModel::ProductBacklogSanityChecks internalDoSanityChecks(const QString &orderingInformation, QList<QVariantMap> issues);
+
+	void setInternalData(QMap<int, LYProductBacklogItem*> allIssues, QList<int> orderingInformation);
 
 signals:
 	/// This signal is emitted before the model is refreshed or updated. Views might want to use it to remember their scrolling position, etc.
@@ -66,9 +81,11 @@ protected:
 	QMap<int, LYProductBacklogItem*> allIssues_;
 	QList<int> orderingInformation_;
 
-	QList<int> orderedIssuesNotFound_;
+	QList<int> orderedIssuesWithoutChildrenNotFound_;
+	QList<int> orderedIssuesWithChildrenNotFound_;
 	QList<int> unorderedIssuesFound_;
 };
+Q_DECLARE_OPERATORS_FOR_FLAGS(LYProductBacklogModel::ProductBacklogSanityChecks)
 
 class LYProductBacklogItem {
 public:

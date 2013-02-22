@@ -6,6 +6,7 @@ LYGithubProductBacklogMainWindow::LYGithubProductBacklogMainWindow(QWidget *pare
 	mainWidget_ = new LYGithubProductBacklogCentralWidget();
 
 	setCentralWidget(mainWidget_);
+	connect(mainWidget_, SIGNAL(requestQuit()), this, SLOT(onRequestQuit()));
 }
 
 LYGithubProductBacklogMainWindow::~LYGithubProductBacklogMainWindow()
@@ -13,4 +14,7 @@ LYGithubProductBacklogMainWindow::~LYGithubProductBacklogMainWindow()
 
 }
 
+void LYGithubProductBacklogMainWindow::onRequestQuit(){
+	close();
+}
 

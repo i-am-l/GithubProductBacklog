@@ -51,6 +51,18 @@ void LYGithubProductBacklog::setRepository(const QString &repository){
 		startupConnectionQueue_.startQueue();
 }
 
+void LYGithubProductBacklog::acceptAppendMissingIssues(){
+
+}
+
+void LYGithubProductBacklog::acceptRemoveClosedIssuesWithoutChildren(){
+
+}
+
+void LYGithubProductBacklog::acceptRemoveClosedIssuesWithChildren(){
+
+}
+
 void LYGithubProductBacklog::onGitAuthenticated(bool wasAuthenticated){
 	if(wasAuthenticated)
 		qDebug() << "Successfully authenticated";
@@ -61,11 +73,27 @@ void LYGithubProductBacklog::onGitAuthenticated(bool wasAuthenticated){
 }
 
 void LYGithubProductBacklog::onPopulateProductBacklogReturned(QList<QVariantMap> issues){
-	productBacklogModel_->parseList(orderingInformation_, issues);
-	qDebug() << "Number of ordered issues not found: " << productBacklogModel_->orderedIssuesNotFound().count();
-	qDebug() << productBacklogModel_->orderedIssuesNotFound();
-	qDebug() << "Number of unordered issues found: " << productBacklogModel_->unorderedIssuesFound().count();
-	qDebug() << productBacklogModel_->unorderedIssuesFound();
+	LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck = productBacklogModel_->parseList(orderingInformation_, issues);
+	qDebug() << "Sanity check: " << sanityCheck;
+	qDebug() << "Passed check " << sanityCheck.testFlag(LYProductBacklogModel::SanityCheckPassed);
+	qDebug() << "Failed check, issue not found " << sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedMissingIssue);
+	qDebug() << "Failed check, issue without children " << sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedFalseOrderedIssueNoChildren);
+	qDebug() << "Failed check, issue with children " << sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedFalseOrderedIssueWithChildren);
+
+	if(sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedFalseOrderedIssueWithChildren)){
+		qDebug() << "Ordered issues with chilren " << productBacklogModel_->orderedIssuesWithChildrenNotFound();
+		emit detectedClosedIssuesWithChildren(productBacklogModel_->orderedIssuesWithChildrenNotFound());
+	}
+	if(sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedFalseOrderedIssueNoChildren)){
+		qDebug() << "Ordered issues without children " << productBacklogModel_->orderedIssuesWithoutChildrenNotFound();
+		emit detectedClosedIssuesWithoutChildren(productBacklogModel_->orderedIssuesWithoutChildrenNotFound());
+	}
+	if(sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedMissingIssue)){
+		qDebug() << "Unordered issues " << productBacklogModel_->unorderedIssuesFound();
+		emit detectedMissingIssues(productBacklogModel_->unorderedIssuesFound());
+	}
+
+
 }
 
 void LYGithubProductBacklog::onPopulateProductBacklogOrderingFindIssueReturned(QList<QVariantMap> issues){

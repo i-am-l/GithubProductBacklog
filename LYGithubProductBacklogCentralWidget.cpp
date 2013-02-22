@@ -3,6 +3,7 @@
 #include <QVBoxLayout>
 #include <QFormLayout>
 #include <QTimer>
+#include <QMessageBox>
 
 LYGithubProductBacklogAuthenticationView::LYGithubProductBacklogAuthenticationView(QWidget *parent) :
 	QDialog(parent)
@@ -112,6 +113,10 @@ LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(QWidget
 	connect(uploadChangesButton_, SIGNAL(clicked()), this, SLOT(onUploadChangesButtonClicked()));
 	connect(productBacklog_, SIGNAL(authenticated(bool)), this, SLOT(onAuthenticated(bool)));
 
+	connect(productBacklog_, SIGNAL(detectedMissingIssues(QList<int>)), this, SLOT(onDetectedMissingIssues(QList<int>)));
+	connect(productBacklog_, SIGNAL(detectedClosedIssuesWithoutChildren(QList<int>)), this, SLOT(onDetectedClosedIssuesWithoutChildren(QList<int>)));
+	connect(productBacklog_, SIGNAL(detectedClosedIssuesWithChildren(QList<int>)), this, SLOT(onDetectedClosedIssuesWithChildren(QList<int>)));
+
 	authenticationView_ = new LYGithubProductBacklogAuthenticationView();
 	connect(authenticationView_, SIGNAL(submitAuthenticationInformation(QString,QString,QString)), this, SLOT(onSubmitAuthenticationInformationAvailable(QString,QString,QString)));
 	authenticationView_->show();
@@ -136,3 +141,33 @@ void LYGithubProductBacklogCentralWidget::onActiveChangesChanged(bool hasActiveC
 	uploadChangesButton_->setEnabled(hasActiveChanges);
 }
 
+void LYGithubProductBacklogCentralWidget::onDetectedMissingIssues(QList<int> missingIssuesNumbers){
+	QMessageBox messageBox;
+
+	QString issuesString;
+	for(int x = 0; x < missingIssuesNumbers.count(); x++)
+		issuesString.append(QString("%1 ").arg(missingIssuesNumbers.at(x)));
+	issuesString.prepend("( ");
+	issuesString.append(")");
+	messageBox.setText("Unordered Issues Detected");
+	messageBox.setInformativeText(QString("Some of the issues in the repository have not been ordered:\n%1\nShould these issues simply be appended to the ordering list?\nAlternatively, you can abort and the program will close without making any changes.").arg(issuesString));
+	messageBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Abort);
+	messageBox.setDefaultButton(QMessageBox::Ok);
+	int retVal = messageBox.exec();
+	switch(retVal){
+	case QMessageBox::Ok:
+		productBacklog_->acceptAppendMissingIssues();
+		break;
+	case QMessageBox::Abort:
+		emit requestQuit();
+		break;
+	}
+}
+
+void LYGithubProductBacklogCentralWidget::onDetectedClosedIssuesWithoutChildren(QList<int> closedIssuesWithoutChildren){
+
+}
+
+void LYGithubProductBacklogCentralWidget::onDetectedClosedIssuesWithChildren(QList<int> closedIssuesWithChildren){
+
+}
