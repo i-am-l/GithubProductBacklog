@@ -15,6 +15,7 @@
 
 class LYGithubProductBacklogAuthenticationView;
 class LYGithubProductBacklogSanityCheckView;
+class LYGithubProductBacklogAddIssueView;
 
 class LYGithubProductBacklogCentralWidget : public QWidget
 {
@@ -40,6 +41,9 @@ protected slots:
 	/// Enables and disables the uploadChangesButton based on whether the list has been modified by the user
 	void onActiveChangesChanged(bool hasActiveChanges);
 
+	void onTreeViewIndexClicked(const QModelIndex &index);
+	void onAddIssueButtonClicked();
+
 	/// Handles opening up the sanity check view if the sanity checks didn't pass on startup
 	void onSanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck);
 
@@ -48,6 +52,10 @@ protected:
 	QTreeView *treeView_;
 	/// Push button to upload changes that have been made
 	QPushButton *uploadChangesButton_;
+	/// Push button for closing issues
+	QPushButton *closeIssueButton_;
+	/// Push button for adding new issues
+	QPushButton *addIssueButton_;
 
 	/// The product backlog model pointer
 	LYGithubProductBacklog *productBacklog_;
@@ -131,6 +139,54 @@ protected:
 	QPushButton *fixButton_;
 	/// reject() button to quit because we're not going to attemp to fix issues
 	QPushButton *quitButton_;
+};
+
+#include <QTextEdit>
+class LYGithubProductBacklogAddIssueView : public QDialog
+{
+Q_OBJECT
+public:
+	LYGithubProductBacklogAddIssueView(QWidget *parent = 0);
+
+public slots:
+	/// Helper slot handling the behaviour of the dialog if a new issue is created or not.
+	void onGitIssueCreated(bool issueCreated);
+
+signals:
+	void requestCreateNewIssue(const QString &title, const QString &body);
+	/// Notifier that the creation of a new issue has finished (whether it is successful or not).
+	void finished();
+
+protected slots:
+	/// Helper slot handling the cancel.
+	void onCancelButtonClicked();
+	/// Helper slot that handles when a request to submit a new issue is submitted.
+	void onSubmitIssueButtonClicked();
+
+	/// Handles enabling the submit button based on whether there is text in the title and body of the issue.
+	void onEditsChanged();
+
+	/// Handles updating the small widget that says thanks to the user for their input and after 5 seconds it closes itself.
+	void onExitCountDownTimeout();
+	/// Handles hiding the dialog and emits the finished signal.
+	void hideAndFinish();
+
+protected:
+	virtual void closeEvent(QCloseEvent *);
+
+protected:
+	QLineEdit *issueTitleEdit_;
+	QTextEdit *issueBodyEdit_;
+	QPushButton *submitIssuesButton_;
+	QPushButton *cancelButton_;
+
+	QProgressBar *waitingBar_;
+	QLabel *messageLabel_;
+
+	QTimer *exitCountDownTimer_;
+	int exitCountDownCounter_;
+
+	bool issueCreatedSuccessfully_;
 };
 
 #endif // LYGITHUBPRODUCTBACKLOGCENTRALWIDGET_H

@@ -17,12 +17,15 @@ public:
 
 	/// Returns the model (to be passed into the tree view)
 	QAbstractItemModel* model() const;
+	/// Returns the model as it's actual type
+	LYProductBacklogModel *productBacklogModel() const;
 
 public slots:
 	/// Fixes sanity check issues (all defaults right now)
 	void fixStartupIssues();
 	/// Uploads changes made in the model to the remote repository
 	void uploadChanges();
+	void createNewIssue(const QString &title, const QString &body);
 
 	/// Sets the username
 	void setUserName(const QString &username);
@@ -47,6 +50,8 @@ signals:
 	void productBacklogOrderingReturned(QVariantMap comment);
 	/// Reports that the changes were uploaded successfully (or unsuccessfully)
 	void changesUploaded(bool successfullyUploaded);
+
+	void newIssueCreated(bool successfullyCreated);
 
 	/// Reports that there are active changes to the model that are not yet uploaded to the remote repository
 	void activeChanges(bool hasActiveChanges);
@@ -73,6 +78,8 @@ protected slots:
 	/// Handles changing the activeChanged() status when changes are successfully uploaded
 	void onUploadChangesReturned(QVariantMap comment);
 
+	void onCreateNewIssueReturned(bool issueCreatedSuccessfully);
+
 	/// Emitted when the model has been refreshed
 	void onProductBacklogModelRefreshed();
 
@@ -87,6 +94,7 @@ protected:
 	void createStartupConnectionQueue();
 	/// Creates the list of connectionQueueObjects and places them in the uploadChangesConnectionQueue (clears the queue if necessary)
 	void createUploadChangesConnectionQueue();
+	void createCreateNewIssueConnectionQueue();
 
 protected:
 	/// Holds the object for communitcating with the github servers
@@ -118,6 +126,7 @@ protected:
 	LYConnectionQueue startupConnectionQueue_;
 	/// The queue of connections to upload changes (check magic issue for server side changes, edit magic issue with new ordering info)
 	LYConnectionQueue uploadChangesConnectionQueue_;
+	LYConnectionQueue createNewIssueConnectionQueue_;
 };
 
 #endif // LYGITHUBPRODUCTBACKLOG_H

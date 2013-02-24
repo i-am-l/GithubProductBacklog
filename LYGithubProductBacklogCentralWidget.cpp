@@ -22,8 +22,19 @@ LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(QWidget
 	uploadChangesButton_ = new QPushButton("Upload Changes");
 	uploadChangesButton_->setEnabled(false);
 
+	closeIssueButton_ = new QPushButton("Close Issue");
+	closeIssueButton_->setEnabled(false);
+
+	addIssueButton_ = new QPushButton("Add Issue");
+
+	QHBoxLayout *hl = new QHBoxLayout();
+	hl->addWidget(addIssueButton_);
+	hl->addWidget(closeIssueButton_);
+	hl->addStretch(10);
+	hl->addWidget(uploadChangesButton_);
+
 	QVBoxLayout *vl = new QVBoxLayout();
-	vl->addWidget(uploadChangesButton_);
+	vl->addLayout(hl);
 	vl->addWidget(treeView_);
 
 	setLayout(vl);
@@ -33,6 +44,9 @@ LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(QWidget
 	connect(productBacklog_, SIGNAL(authenticated(bool)), this, SLOT(onAuthenticated(bool)));
 
 	connect(productBacklog_, SIGNAL(sanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks)), this, SLOT(onSanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks)));
+
+	connect(treeView_, SIGNAL(clicked(QModelIndex)), this, SLOT(onTreeViewIndexClicked(QModelIndex)));
+	connect(addIssueButton_, SIGNAL(clicked()), this, SLOT(onAddIssueButtonClicked()));
 
 	authenticationView_ = new LYGithubProductBacklogAuthenticationView();
 	connect(authenticationView_, SIGNAL(submitAuthenticationInformation(QString,QString,QString)), this, SLOT(onSubmitAuthenticationInformationAvailable(QString,QString,QString)));
@@ -56,6 +70,19 @@ void LYGithubProductBacklogCentralWidget::onUploadChangesButtonClicked(){
 
 void LYGithubProductBacklogCentralWidget::onActiveChangesChanged(bool hasActiveChanges){
 	uploadChangesButton_->setEnabled(hasActiveChanges);
+}
+
+void LYGithubProductBacklogCentralWidget::onTreeViewIndexClicked(const QModelIndex &index){
+	QString closeIssueString = QString("Close Issue #%1").arg(productBacklog_->productBacklogModel()->productBacklogItem(index)->issueNumber());
+	closeIssueButton_->setText(closeIssueString);
+	closeIssueButton_->setEnabled(true);
+}
+
+void LYGithubProductBacklogCentralWidget::onAddIssueButtonClicked(){
+	LYGithubProductBacklogAddIssueView *addIssueView = new LYGithubProductBacklogAddIssueView();
+	connect(addIssueView, SIGNAL(requestCreateNewIssue(QString,QString)), productBacklog_, SLOT(createNewIssue(QString,QString)));
+	connect(productBacklog_, SIGNAL(newIssueCreated(bool)), addIssueView, SLOT(onGitIssueCreated(bool)));
+	addIssueView->exec();
 }
 
 void LYGithubProductBacklogCentralWidget::onSanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck){
@@ -235,4 +262,159 @@ void LYGithubProductBacklogSanityCheckView::onCheckBoxToggled(){
 		fixButton_->setEnabled(true);
 	else
 		fixButton_->setEnabled(false);
+}
+
+LYGithubProductBacklogAddIssueView::LYGithubProductBacklogAddIssueView(QWidget *parent)
+	: QDialog(parent)
+{
+	issueCreatedSuccessfully_ = false;
+	exitCountDownTimer_ = 0;
+
+	issueTitleEdit_ = new QLineEdit();
+
+	issueBodyEdit_ = new QTextEdit();
+
+	submitIssuesButton_ = new QPushButton(QIcon(":/22x22/greenCheck.png"), "Submit");
+	submitIssuesButton_->setEnabled(false);
+
+	cancelButton_ = new QPushButton(QIcon(":/22x22/list-remove-2.png"), "Cancel");
+
+	waitingBar_ = new QProgressBar();
+	waitingBar_->setMinimum(0);
+	waitingBar_->setMaximum(0);
+	waitingBar_->setMinimumWidth(200);
+	waitingBar_->hide();
+
+	messageLabel_ = new QLabel();
+
+	QHBoxLayout *messageVL = new QHBoxLayout();
+	messageVL->addWidget(messageLabel_, 0, Qt::AlignCenter);
+	messageVL->addWidget(waitingBar_, 0, Qt::AlignCenter);
+
+	QVBoxLayout *fl = new QVBoxLayout();
+	fl->addWidget(new QLabel("Title"), 0, Qt::AlignLeft);
+	fl->addWidget(issueTitleEdit_);
+	fl->addWidget(new QLabel("Description"), 0, Qt::AlignLeft);
+	fl->addWidget(issueBodyEdit_);
+
+	QHBoxLayout *hl = new QHBoxLayout();
+	hl->addStretch();
+	hl->addWidget(submitIssuesButton_);
+	hl->addWidget(cancelButton_);
+
+	QVBoxLayout *vl = new QVBoxLayout();
+	vl->addLayout(fl);
+	vl->addLayout(messageVL);
+	vl->addLayout(hl);
+
+	setLayout(vl);
+
+	connect(cancelButton_, SIGNAL(clicked()), this, SLOT(onCancelButtonClicked()));
+	connect(submitIssuesButton_, SIGNAL(clicked()), this, SLOT(onSubmitIssueButtonClicked()));
+
+	connect(issueTitleEdit_, SIGNAL(textEdited(QString)), this, SLOT(onEditsChanged()));
+	connect(issueBodyEdit_, SIGNAL(textChanged()), this, SLOT(onEditsChanged()));
+}
+
+void LYGithubProductBacklogAddIssueView::onCancelButtonClicked()
+{
+	hideAndFinish();
+}
+
+void LYGithubProductBacklogAddIssueView::onSubmitIssueButtonClicked()
+{
+	waitingBar_->show();
+	messageLabel_->show();
+	submitIssuesButton_->setEnabled(false);
+
+	messageLabel_->setText("Submitting Issue...");
+	emit requestCreateNewIssue(issueTitleEdit_->text(), issueBodyEdit_->document()->toPlainText());
+
+//	issueManager_->createNewIssue(issueTitleEdit_->text(), issueBodyEdit_->document()->toPlainText(), assignee);
+//	connect(issueManager_, SIGNAL(issueCreated(bool)), this, SLOT(onGitIssueCreated(bool)));
+}
+
+/*
+void LYGithubProductBacklogAddIssueView::onGitAuthenticated(bool authenticated)
+{
+	if(authenticated){
+
+		issueTitleEdit_->setEnabled(true);
+		issueBodyEdit_->setEnabled(true);
+		waitingBar_->hide();
+		messageLabel_->hide();
+	}
+	else{
+
+		issueTitleEdit_->setEnabled(false);
+		issueBodyEdit_->setEnabled(false);
+		submitIssuesButton_->setEnabled(false);
+		waitingBar_->show();
+		messageLabel_->show();
+		messageLabel_->setText("Authentication Failed");
+	}
+
+}
+*/
+
+void LYGithubProductBacklogAddIssueView::onGitIssueCreated(bool issueCreated)
+{
+	if(issueCreated){
+
+		issueCreatedSuccessfully_ = true;
+		waitingBar_->setMaximum(1);
+		waitingBar_->setValue(1);
+		messageLabel_->setText("Issue Submitted");
+
+		issueTitleEdit_->setEnabled(false);
+		issueBodyEdit_->setEnabled(false);
+		submitIssuesButton_->setEnabled(false);
+		cancelButton_->setEnabled(false);
+
+		exitCountDownCounter_ = 0;
+		exitCountDownTimer_ = new QTimer(this);
+		connect(exitCountDownTimer_, SIGNAL(timeout()), this, SLOT(onExitCountDownTimeout()));
+		exitCountDownTimer_->start(1000);
+		onExitCountDownTimeout();
+	}
+	else{
+
+		waitingBar_->show();
+		messageLabel_->show();
+		messageLabel_->setText("Could not create issue");
+	}
+}
+
+void LYGithubProductBacklogAddIssueView::onEditsChanged()
+{
+	if(!issueTitleEdit_->text().isEmpty() && !issueBodyEdit_->document()->toPlainText().isEmpty() && !issueCreatedSuccessfully_)
+		submitIssuesButton_->setEnabled(true);
+	else
+		submitIssuesButton_->setEnabled(false);
+}
+
+void LYGithubProductBacklogAddIssueView::onExitCountDownTimeout()
+{
+	if(exitCountDownCounter_ == 5){
+
+		hideAndFinish();
+		return;
+	}
+
+	QString goodbyeMessage = QString("Thanks for submitting your issue\nWe appreciate your help\n(Closing this window in %1 seconds)").arg(5-exitCountDownCounter_);
+	issueBodyEdit_->setText(goodbyeMessage);
+	exitCountDownCounter_++;
+}
+
+void LYGithubProductBacklogAddIssueView::hideAndFinish()
+{
+	hide();
+	emit finished();
+}
+
+#include <QCloseEvent>
+void LYGithubProductBacklogAddIssueView::closeEvent(QCloseEvent *e)
+{
+	e->accept();
+	hideAndFinish();
 }

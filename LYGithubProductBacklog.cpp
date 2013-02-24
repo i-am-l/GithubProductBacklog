@@ -24,6 +24,10 @@ QAbstractItemModel* LYGithubProductBacklog::model() const{
 	return productBacklogModel_;
 }
 
+LYProductBacklogModel* LYGithubProductBacklog::productBacklogModel() const{
+	return productBacklogModel_;
+}
+
 void LYGithubProductBacklog::fixStartupIssues(){
 	productBacklogModel_->fixParseIssues(orderingInformation_, issues_);
 	uploadChanges();
@@ -36,6 +40,16 @@ void LYGithubProductBacklog::uploadChanges(){
 	uploadChangesConnectionQueue_.first()->setInitiatorArguments(arguments);
 
 	uploadChangesConnectionQueue_.startQueue();
+}
+
+void LYGithubProductBacklog::createNewIssue(const QString &title, const QString &body){
+	createCreateNewIssueConnectionQueue();
+	QVariantList arguments;
+	arguments.append(QVariant::fromValue(title));
+	arguments.append(QVariant::fromValue(body));
+	createNewIssueConnectionQueue_.first()->setInitiatorArguments(arguments);
+
+	createNewIssueConnectionQueue_.startQueue();
 }
 
 void LYGithubProductBacklog::setUserName(const QString &username){
@@ -152,6 +166,10 @@ void LYGithubProductBacklog::onUploadChangesReturned(QVariantMap comment){
 	emit activeChanges(false);
 }
 
+void LYGithubProductBacklog::onCreateNewIssueReturned(bool issueCreatedSuccessfully){
+	emit newIssueCreated(issueCreatedSuccessfully);
+}
+
 void LYGithubProductBacklog::onProductBacklogModelRefreshed(){
 	bool hasChanges = false;
 	if(orderingInformation_ != productBacklogModel_->generateListNotation())
@@ -243,4 +261,14 @@ void LYGithubProductBacklog::createUploadChangesConnectionQueue(){
 	connectionQueueObject->setReceiver(this, SLOT(onUploadChangesReturned(QVariantMap)));
 	connectionQueueObject->setInitiatorObject(githubManager_, SLOT(editSingleComment(int,QString)));
 	uploadChangesConnectionQueue_.pushBackConnectionQueueObject(connectionQueueObject);
+}
+
+void LYGithubProductBacklog::createCreateNewIssueConnectionQueue(){
+	createNewIssueConnectionQueue_.clearQueue();
+
+	LYConnectionQueueObject *connectionQueueObject = new LYConnectionQueueObject(this);
+	connectionQueueObject->setSender(githubManager_, SIGNAL(issueCreated(bool)));
+	connectionQueueObject->setReceiver(this, SLOT(onCreateNewIssueReturned(bool)));
+	connectionQueueObject->setInitiatorObject(githubManager_, SLOT(createNewIssue(QString,QString)));
+	createNewIssueConnectionQueue_.pushBackConnectionQueueObject(connectionQueueObject);
 }
