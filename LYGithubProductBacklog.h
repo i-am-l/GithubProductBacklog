@@ -12,11 +12,14 @@ class LYGithubProductBacklog : public QObject
 Q_OBJECT
 
 public:
+	/// Constructor takes username, password, and repository
 	LYGithubProductBacklog(const QString &username = QString(), const QString &password = QString(), const QString &repository = QString(), QObject *parent = 0);
 
+	/// Returns the model (to be passed into the tree view)
 	QAbstractItemModel* model() const;
 
 public slots:
+	/// Fixes sanity check issues (all defaults right now)
 	void fixStartupIssues();
 	/// Uploads changes made in the model to the remote repository
 	void uploadChanges();
@@ -28,8 +31,11 @@ public slots:
 	/// Sets the repository
 	void setRepository(const QString &repository);
 
+	/// Returns a list of "<Issue Number> - <Issue Title>" for issues not found in the product backlog
 	QStringList missingIssues() const;
+	/// Returns a list of "<Issue Number> - <Issue Title>" for issues found in the product backlog but not in the open issues list (for issues without children)
 	QStringList orderedIssuesWithoutChildren() const;
+	/// Returns a list of "<Issue Number> - <Issue Title>" for issues found in the product backlog but not in the open issues list (for issues with children)
 	QStringList orderedIssuesWithChildren() const;
 
 signals:
@@ -45,6 +51,7 @@ signals:
 	/// Reports that there are active changes to the model that are not yet uploaded to the remote repository
 	void activeChanges(bool hasActiveChanges);
 
+	/// Emitted after startup once the sanity checks have been done. Used to generate the dialog for handling sanity check problems.
 	void sanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck);
 
 protected slots:
@@ -66,12 +73,14 @@ protected slots:
 	/// Handles changing the activeChanged() status when changes are successfully uploaded
 	void onUploadChangesReturned(QVariantMap comment);
 
+	/// Emitted when the model has been refreshed
 	void onProductBacklogModelRefreshed();
 
 protected:
 	/// Helper function for authentication. Won't run without values for username/password/repository
 	bool authenticateHelper();
 
+	/// Helper function for printing each level of the JSON responses from Github
 	void printGithubMapRecursive(QVariantMap map, int indentation);
 
 	/// Creates the list of connectionQueueObjects and places them in the startupConnectionQueue (clears the queue if necessary)
@@ -80,12 +89,17 @@ protected:
 	void createUploadChangesConnectionQueue();
 
 protected:
+	/// Holds the object for communitcating with the github servers
 	LYGithubManager *githubManager_;
 
+	/// Holds the model object for storing issue data for views in the tree view
 	LYProductBacklogModel *productBacklogModel_;
 
+	/// String returned from the magic ordering issue in the github repository
 	QString orderingInformation_;
+	/// List of the open issues
 	QList<QVariantMap> issues_;
+	/// List of the closed issues
 	QList<QVariantMap> closedIssues_;
 	/// Id of the comment that holds the product backlog ordering information
 	int ordingInformationCommentId_;

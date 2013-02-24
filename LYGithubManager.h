@@ -125,6 +125,7 @@ protected:
 	QString repository_;
 };
 
+/// Declares the ENUMS as availabe to the QMetaObject system
 Q_DECLARE_METATYPE(LYGithubManager::IssuesFilter)
 Q_DECLARE_METATYPE(LYGithubManager::IssuesState)
 Q_DECLARE_METATYPE(LYGithubManager::IssuesSort)

@@ -306,22 +306,6 @@ LYProductBacklogModel::ProductBacklogSanityChecks LYProductBacklogModel::parseLi
 	if(sanityCheck != LYProductBacklogModel::SanityCheckPassed)
 		return sanityCheck;
 
-	/*
-	clear();
-	QMap<int, int> issueNumberToParentIssueNumber = parseListNotation(orderingInformation);
-	LYProductBacklogItem *newIssueItem;
-	QMap<int, LYProductBacklogItem*> newAllIssues;
-	for(int x = 0; x < issues.count(); x++){
-		newIssueItem = new LYProductBacklogItem(issues.at(x).value("number").toString() + " - " + issues.at(x).value("title").toString(), issues.at(x).value("number").toInt(), issueNumberToParentIssueNumber.value(issues.at(x).value("number").toInt()));
-		newAllIssues.insert(newIssueItem->issueNumber(), newIssueItem);
-	}
-
-
-	QList<int> newOrderingInformation;
-	for(int x = 0; x < orderingList.count(); x++)
-		newOrderingInformation.append(orderingList.at(x).toInt());
-	setInternalData(newAllIssues, newOrderingInformation);
-	*/
 	internalParseListWithOptions(orderingInformation, issues);
 
 	return sanityCheck;
@@ -330,16 +314,6 @@ LYProductBacklogModel::ProductBacklogSanityChecks LYProductBacklogModel::parseLi
 bool LYProductBacklogModel::fixParseIssues(const QString &orderingInformation, QList<QVariantMap> issues){
 	return internalParseListWithOptions(orderingInformation, issues, true, true);
 }
-
-/*
-bool LYProductBacklogModel::appendMissingIssues(const QString &orderingInformation, QList<QVariantMap> issues){
-	return internalParseListWithOptions(orderingInformation, issues, true);
-}
-
-bool LYProductBacklogModel::removeClosedIssuesWithoutChildren(const QString &orderingInformation, QList<QVariantMap> issues){
-	return internalParseListWithOptions(orderingInformation, issues, false, true);
-}
-*/
 
 void LYProductBacklogModel::setInternalData(QMap<int, LYProductBacklogItem *> allIssues, QList<int> orderingInformation){
 	emit beginResetModel();

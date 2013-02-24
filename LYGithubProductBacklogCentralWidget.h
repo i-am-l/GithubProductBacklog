@@ -25,6 +25,7 @@ public:
 	LYGithubProductBacklogCentralWidget(QWidget *parent = 0);
 
 signals:
+	/// Emitted when we decide to quit, received by the main window
 	void requestQuit();
 
 protected slots:
@@ -39,6 +40,7 @@ protected slots:
 	/// Enables and disables the uploadChangesButton based on whether the list has been modified by the user
 	void onActiveChangesChanged(bool hasActiveChanges);
 
+	/// Handles opening up the sanity check view if the sanity checks didn't pass on startup
 	void onSanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck);
 
 protected:
@@ -103,21 +105,31 @@ class LYGithubProductBacklogSanityCheckView : public QDialog
 {
 Q_OBJECT
 public:
+	/// Constructor takes the sanity check flags and string lists for each of the possible failure modes
 	LYGithubProductBacklogSanityCheckView(LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck, QStringList missingIssues, QStringList closedIssuesWithoutChildren, QStringList closedIssuesWithChildren, QWidget *parent = 0);
 
 protected slots:
+	/// Handles any of the check boxes being toggled
 	void onCheckBoxToggled();
 
 protected:
+	/// List view for missing issues
 	QListView *missingIssuesListView_;
+	/// List view for closed (or non-existant) issues in the product backlog without children
 	QListView *closedIssuesWithoutChildrenListView_;
+	/// List view for closed (or non-existant) issues in the product backlog with children
 	QListView *closedIssuesWithChildrenListView_;
 
+	/// Check box for fixing missing issues sanity check
 	QCheckBox *fixMissingIssuesCheckBox_;
+	/// Check box for fixing closed issues without children sanity check
 	QCheckBox *fixClosedIssuesWithoutChildrenCheckBox_;
+	/// Check box for fixing closed issues with children sanity check (not doing anything right now)
 	QCheckBox *fixClosedIssuesWithChildrenCheckBox_;
 
+	/// Default accept() button to fix issues
 	QPushButton *fixButton_;
+	/// reject() button to quit because we're not going to attemp to fix issues
 	QPushButton *quitButton_;
 };
 
