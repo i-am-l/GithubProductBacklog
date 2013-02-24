@@ -25,6 +25,7 @@ public slots:
 	void fixStartupIssues();
 	/// Uploads changes made in the model to the remote repository
 	void uploadChanges();
+	/// Called to create a new issue in the repository
 	void createNewIssue(const QString &title, const QString &body);
 
 	/// Sets the username
@@ -51,6 +52,7 @@ signals:
 	/// Reports that the changes were uploaded successfully (or unsuccessfully)
 	void changesUploaded(bool successfullyUploaded);
 
+	/// Reports that the github manager has created a new issue
 	void newIssueCreated(bool successfullyCreated);
 
 	/// Reports that there are active changes to the model that are not yet uploaded to the remote repository
@@ -78,6 +80,7 @@ protected slots:
 	/// Handles changing the activeChanged() status when changes are successfully uploaded
 	void onUploadChangesReturned(QVariantMap comment);
 
+	/// Handles the return from the github manager with the success state of the newly created issue
 	void onCreateNewIssueReturned(bool issueCreatedSuccessfully);
 
 	/// Emitted when the model has been refreshed
@@ -94,6 +97,7 @@ protected:
 	void createStartupConnectionQueue();
 	/// Creates the list of connectionQueueObjects and places them in the uploadChangesConnectionQueue (clears the queue if necessary)
 	void createUploadChangesConnectionQueue();
+	/// Creates the list of connectionQueueObjects and places them in the createNewIssueConnectionQueue (clears the queue if necessary)
 	void createCreateNewIssueConnectionQueue();
 
 protected:
@@ -126,6 +130,7 @@ protected:
 	LYConnectionQueue startupConnectionQueue_;
 	/// The queue of connections to upload changes (check magic issue for server side changes, edit magic issue with new ordering info)
 	LYConnectionQueue uploadChangesConnectionQueue_;
+	/// The queue of connections to create a new issue (create new issue)
 	LYConnectionQueue createNewIssueConnectionQueue_;
 };
 

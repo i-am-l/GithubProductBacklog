@@ -329,33 +329,7 @@ void LYGithubProductBacklogAddIssueView::onSubmitIssueButtonClicked()
 
 	messageLabel_->setText("Submitting Issue...");
 	emit requestCreateNewIssue(issueTitleEdit_->text(), issueBodyEdit_->document()->toPlainText());
-
-//	issueManager_->createNewIssue(issueTitleEdit_->text(), issueBodyEdit_->document()->toPlainText(), assignee);
-//	connect(issueManager_, SIGNAL(issueCreated(bool)), this, SLOT(onGitIssueCreated(bool)));
 }
-
-/*
-void LYGithubProductBacklogAddIssueView::onGitAuthenticated(bool authenticated)
-{
-	if(authenticated){
-
-		issueTitleEdit_->setEnabled(true);
-		issueBodyEdit_->setEnabled(true);
-		waitingBar_->hide();
-		messageLabel_->hide();
-	}
-	else{
-
-		issueTitleEdit_->setEnabled(false);
-		issueBodyEdit_->setEnabled(false);
-		submitIssuesButton_->setEnabled(false);
-		waitingBar_->show();
-		messageLabel_->show();
-		messageLabel_->setText("Authentication Failed");
-	}
-
-}
-*/
 
 void LYGithubProductBacklogAddIssueView::onGitIssueCreated(bool issueCreated)
 {
@@ -395,13 +369,13 @@ void LYGithubProductBacklogAddIssueView::onEditsChanged()
 
 void LYGithubProductBacklogAddIssueView::onExitCountDownTimeout()
 {
-	if(exitCountDownCounter_ == 5){
+	if(exitCountDownCounter_ == 3){
 
 		hideAndFinish();
 		return;
 	}
 
-	QString goodbyeMessage = QString("Thanks for submitting your issue\nWe appreciate your help\n(Closing this window in %1 seconds)").arg(5-exitCountDownCounter_);
+	QString goodbyeMessage = QString("New Issue Created\n(Closing this window in %1 seconds)").arg(3-exitCountDownCounter_);
 	issueBodyEdit_->setText(goodbyeMessage);
 	exitCountDownCounter_++;
 }
