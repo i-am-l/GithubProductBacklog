@@ -17,6 +17,7 @@ public:
 	QAbstractItemModel* model() const;
 
 public slots:
+	void fixStartupIssues();
 	/// Uploads changes made in the model to the remote repository
 	void uploadChanges();
 
@@ -27,9 +28,9 @@ public slots:
 	/// Sets the repository
 	void setRepository(const QString &repository);
 
-	void acceptAppendMissingIssues();
-	void acceptRemoveClosedIssuesWithoutChildren();
-	void acceptRemoveClosedIssuesWithChildren();
+	QStringList missingIssues() const;
+	QStringList orderedIssuesWithoutChildren() const;
+	QStringList orderedIssuesWithChildren() const;
 
 signals:
 	/// Reports that authentication was successful (or unsuccessful)
@@ -44,9 +45,7 @@ signals:
 	/// Reports that there are active changes to the model that are not yet uploaded to the remote repository
 	void activeChanges(bool hasActiveChanges);
 
-	void detectedMissingIssues(QList<int> missingIssuesNumbers);
-	void detectedClosedIssuesWithoutChildren(QList<int> closedIssuesWithoutChildren);
-	void detectedClosedIssuesWithChildren(QList<int> closedIssuesWithChildren);
+	void sanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck);
 
 protected slots:
 	/// Handles the return of the authentication request
@@ -86,6 +85,8 @@ protected:
 	LYProductBacklogModel *productBacklogModel_;
 
 	QString orderingInformation_;
+	QList<QVariantMap> issues_;
+	QList<QVariantMap> closedIssues_;
 	/// Id of the comment that holds the product backlog ordering information
 	int ordingInformationCommentId_;
 

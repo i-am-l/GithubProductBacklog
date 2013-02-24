@@ -5,6 +5,85 @@
 #include <QTimer>
 #include <QMessageBox>
 
+LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(QWidget *parent) :
+	QWidget(parent)
+{
+	productBacklog_ = new LYGithubProductBacklog();
+
+	treeView_ = new QTreeView();
+	treeView_->setModel(productBacklog_->model());
+	treeView_->setSelectionBehavior(QAbstractItemView::SelectItems);
+	treeView_->setSelectionMode(QAbstractItemView::SingleSelection);
+	treeView_->setDragEnabled(true);
+	treeView_->viewport()->setAcceptDrops(true);
+	treeView_->setDropIndicatorShown(true);
+	treeView_->setDragDropMode(QTreeView::InternalMove);
+
+	uploadChangesButton_ = new QPushButton("Upload Changes");
+	uploadChangesButton_->setEnabled(false);
+
+	QVBoxLayout *vl = new QVBoxLayout();
+	vl->addWidget(uploadChangesButton_);
+	vl->addWidget(treeView_);
+
+	setLayout(vl);
+
+	connect(productBacklog_, SIGNAL(activeChanges(bool)), this, SLOT(onActiveChangesChanged(bool)));
+	connect(uploadChangesButton_, SIGNAL(clicked()), this, SLOT(onUploadChangesButtonClicked()));
+	connect(productBacklog_, SIGNAL(authenticated(bool)), this, SLOT(onAuthenticated(bool)));
+
+	connect(productBacklog_, SIGNAL(sanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks)), this, SLOT(onSanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks)));
+
+	authenticationView_ = new LYGithubProductBacklogAuthenticationView();
+	connect(authenticationView_, SIGNAL(submitAuthenticationInformation(QString,QString,QString)), this, SLOT(onSubmitAuthenticationInformationAvailable(QString,QString,QString)));
+	authenticationView_->show();
+	authenticationView_->raise();
+}
+
+void LYGithubProductBacklogCentralWidget::onSubmitAuthenticationInformationAvailable(const QString &username, const QString &password, const QString &repository){
+	productBacklog_->setUserName(username);
+	productBacklog_->setPassword(password);
+	productBacklog_->setRepository(repository);
+}
+
+void LYGithubProductBacklogCentralWidget::onAuthenticated(bool authenticated){
+	authenticationView_->setAuthenticated(authenticated);
+}
+
+void LYGithubProductBacklogCentralWidget::onUploadChangesButtonClicked(){
+	productBacklog_->uploadChanges();
+}
+
+void LYGithubProductBacklogCentralWidget::onActiveChangesChanged(bool hasActiveChanges){
+	uploadChangesButton_->setEnabled(hasActiveChanges);
+}
+
+void LYGithubProductBacklogCentralWidget::onSanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck){
+	QStringList missingIssues;
+	QStringList orderedIssuesWithoutChildren;
+	QStringList orderedIssuesWithChildren;
+	if(sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedMissingIssue))
+		missingIssues = productBacklog_->missingIssues();
+	if(sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedFalseOrderedIssueNoChildren))
+		orderedIssuesWithoutChildren = productBacklog_->orderedIssuesWithoutChildren();
+	if(sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedFalseOrderedIssueWithChildren))
+		orderedIssuesWithChildren = productBacklog_->orderedIssuesWithChildren();
+
+	if(!sanityCheck.testFlag(LYProductBacklogModel::SanityCheckPassed)){
+		LYGithubProductBacklogSanityCheckView *sanityCheckView = new LYGithubProductBacklogSanityCheckView(sanityCheck, productBacklog_->missingIssues(), productBacklog_->orderedIssuesWithoutChildren(), productBacklog_->orderedIssuesWithChildren());
+		int retVal = sanityCheckView->exec();
+
+		switch(retVal){
+		case QDialog::Accepted:
+			productBacklog_->fixStartupIssues();
+			break;
+		case QDialog::Rejected:
+			emit requestQuit();
+			break;
+		}
+	}
+}
+
 LYGithubProductBacklogAuthenticationView::LYGithubProductBacklogAuthenticationView(QWidget *parent) :
 	QDialog(parent)
 {
@@ -86,88 +165,74 @@ void LYGithubProductBacklogAuthenticationView::prepareServerInteractionWidgets()
 	serverInteractionLabel_->hide();
 }
 
-LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(QWidget *parent) :
-	QWidget(parent)
+LYGithubProductBacklogSanityCheckView::LYGithubProductBacklogSanityCheckView(LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck, QStringList missingIssues, QStringList closedIssuesWithoutChildren, QStringList closedIssuesWithChildren, QWidget *parent) :
+	QDialog(parent)
 {
-	productBacklog_ = new LYGithubProductBacklog();
+	missingIssuesListView_ = new QListView();
+	closedIssuesWithoutChildrenListView_ = new QListView();
+	closedIssuesWithChildrenListView_ = new QListView();
 
-	treeView_ = new QTreeView();
-	treeView_->setModel(productBacklog_->model());
-	treeView_->setSelectionBehavior(QAbstractItemView::SelectItems);
-	treeView_->setSelectionMode(QAbstractItemView::SingleSelection);
-	treeView_->setDragEnabled(true);
-	treeView_->viewport()->setAcceptDrops(true);
-	treeView_->setDropIndicatorShown(true);
-	treeView_->setDragDropMode(QTreeView::InternalMove);
+	QStringListModel *missingIssuesModel = new QStringListModel(missingIssues);
+	QStringListModel *closedIssuesWithoutChildrenModel = new QStringListModel(closedIssuesWithoutChildren);
+	QStringListModel *closedIssuesWithChildrenModel = new QStringListModel(closedIssuesWithChildren);
 
-	uploadChangesButton_ = new QPushButton("Upload Changes");
-	uploadChangesButton_->setEnabled(false);
+	missingIssuesListView_->setModel(missingIssuesModel);
+	closedIssuesWithoutChildrenListView_->setModel(closedIssuesWithoutChildrenModel);
+	closedIssuesWithChildrenListView_->setModel(closedIssuesWithChildrenModel);
 
-	QVBoxLayout *vl = new QVBoxLayout();
-	vl->addWidget(uploadChangesButton_);
-	vl->addWidget(treeView_);
+	QGroupBox *missingIssuesGroupBox = new QGroupBox("Some Open Issues are Missing");
+	QVBoxLayout *missingIssuesLayout = new QVBoxLayout();
+	fixMissingIssuesCheckBox_ = new QCheckBox("Append missing issues to the back of the Product Backlog");
+	fixMissingIssuesCheckBox_->setChecked(true);
+	missingIssuesLayout->addWidget(fixMissingIssuesCheckBox_);
+	missingIssuesLayout->addWidget(missingIssuesListView_);
+	missingIssuesGroupBox->setLayout(missingIssuesLayout);
 
-	setLayout(vl);
+	QGroupBox *closedIssuesWithoutChildrenGroupBox = new QGroupBox("Some Closed or Unknown Issues are Present");
+	QVBoxLayout *closedIssuesWithoutChildrenLayout = new QVBoxLayout();
+	fixClosedIssuesWithoutChildrenCheckBox_ = new QCheckBox("Remove these issues from the Product Backlog");
+	fixClosedIssuesWithoutChildrenCheckBox_->setChecked(true);
+	closedIssuesWithoutChildrenLayout->addWidget(fixClosedIssuesWithoutChildrenCheckBox_);
+	closedIssuesWithoutChildrenLayout->addWidget(closedIssuesWithoutChildrenListView_);
+	closedIssuesWithoutChildrenGroupBox->setLayout(closedIssuesWithoutChildrenLayout);
 
-	connect(productBacklog_, SIGNAL(activeChanges(bool)), this, SLOT(onActiveChangesChanged(bool)));
-	connect(uploadChangesButton_, SIGNAL(clicked()), this, SLOT(onUploadChangesButtonClicked()));
-	connect(productBacklog_, SIGNAL(authenticated(bool)), this, SLOT(onAuthenticated(bool)));
+	QGroupBox *closedIssuesWithChildrenGroupBox = new QGroupBox("Some Closed or Unknown Issues are Present and They Supposedly Have Children");
+	QVBoxLayout *closedIssuesWithChildrenLayout = new QVBoxLayout();
+	fixClosedIssuesWithChildrenCheckBox_ = new QCheckBox("Reopen these Issues Because their Children are still Open");
+	fixClosedIssuesWithChildrenCheckBox_->setChecked(true);
+	closedIssuesWithChildrenLayout->addWidget(fixClosedIssuesWithChildrenCheckBox_);
+	closedIssuesWithChildrenLayout->addWidget(closedIssuesWithChildrenListView_);
+	closedIssuesWithChildrenGroupBox->setLayout(closedIssuesWithChildrenLayout);
 
-	connect(productBacklog_, SIGNAL(detectedMissingIssues(QList<int>)), this, SLOT(onDetectedMissingIssues(QList<int>)));
-	connect(productBacklog_, SIGNAL(detectedClosedIssuesWithoutChildren(QList<int>)), this, SLOT(onDetectedClosedIssuesWithoutChildren(QList<int>)));
-	connect(productBacklog_, SIGNAL(detectedClosedIssuesWithChildren(QList<int>)), this, SLOT(onDetectedClosedIssuesWithChildren(QList<int>)));
+	connect(fixMissingIssuesCheckBox_, SIGNAL(toggled(bool)), this, SLOT(onCheckBoxToggled()));
+	connect(fixClosedIssuesWithoutChildrenCheckBox_, SIGNAL(toggled(bool)), this, SLOT(onCheckBoxToggled()));
+	connect(fixClosedIssuesWithChildrenCheckBox_, SIGNAL(toggled(bool)), this, SLOT(onCheckBoxToggled()));
 
-	authenticationView_ = new LYGithubProductBacklogAuthenticationView();
-	connect(authenticationView_, SIGNAL(submitAuthenticationInformation(QString,QString,QString)), this, SLOT(onSubmitAuthenticationInformationAvailable(QString,QString,QString)));
-	authenticationView_->show();
-	authenticationView_->raise();
+	fixButton_ = new QPushButton("Fix");
+	quitButton_ = new QPushButton("Quit");
+	fixButton_->setDefault(true);
+	QHBoxLayout *buttonsHL = new QHBoxLayout();
+	buttonsHL->addStretch(10);
+	buttonsHL->addWidget(quitButton_);
+	buttonsHL->addWidget(fixButton_);
+
+	connect(fixButton_, SIGNAL(clicked()), this, SLOT(accept()));
+	connect(quitButton_, SIGNAL(clicked()), this, SLOT(reject()));
+
+	QVBoxLayout *masterVL = new QVBoxLayout();
+	if(sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedMissingIssue))
+		masterVL->addWidget(missingIssuesGroupBox);
+	if(sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedFalseOrderedIssueNoChildren))
+		masterVL->addWidget(closedIssuesWithoutChildrenGroupBox);
+	if(sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedFalseOrderedIssueWithChildren))
+		masterVL->addWidget(closedIssuesWithChildrenGroupBox);
+	masterVL->addLayout(buttonsHL);
+	setLayout(masterVL);
 }
 
-void LYGithubProductBacklogCentralWidget::onSubmitAuthenticationInformationAvailable(const QString &username, const QString &password, const QString &repository){
-	productBacklog_->setUserName(username);
-	productBacklog_->setPassword(password);
-	productBacklog_->setRepository(repository);
-}
-
-void LYGithubProductBacklogCentralWidget::onAuthenticated(bool authenticated){
-	authenticationView_->setAuthenticated(authenticated);
-}
-
-void LYGithubProductBacklogCentralWidget::onUploadChangesButtonClicked(){
-	productBacklog_->uploadChanges();
-}
-
-void LYGithubProductBacklogCentralWidget::onActiveChangesChanged(bool hasActiveChanges){
-	uploadChangesButton_->setEnabled(hasActiveChanges);
-}
-
-void LYGithubProductBacklogCentralWidget::onDetectedMissingIssues(QList<int> missingIssuesNumbers){
-	QMessageBox messageBox;
-
-	QString issuesString;
-	for(int x = 0; x < missingIssuesNumbers.count(); x++)
-		issuesString.append(QString("%1 ").arg(missingIssuesNumbers.at(x)));
-	issuesString.prepend("( ");
-	issuesString.append(")");
-	messageBox.setText("Unordered Issues Detected");
-	messageBox.setInformativeText(QString("Some of the issues in the repository have not been ordered:\n%1\nShould these issues simply be appended to the ordering list?\nAlternatively, you can abort and the program will close without making any changes.").arg(issuesString));
-	messageBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Abort);
-	messageBox.setDefaultButton(QMessageBox::Ok);
-	int retVal = messageBox.exec();
-	switch(retVal){
-	case QMessageBox::Ok:
-		productBacklog_->acceptAppendMissingIssues();
-		break;
-	case QMessageBox::Abort:
-		emit requestQuit();
-		break;
-	}
-}
-
-void LYGithubProductBacklogCentralWidget::onDetectedClosedIssuesWithoutChildren(QList<int> closedIssuesWithoutChildren){
-
-}
-
-void LYGithubProductBacklogCentralWidget::onDetectedClosedIssuesWithChildren(QList<int> closedIssuesWithChildren){
-
+void LYGithubProductBacklogSanityCheckView::onCheckBoxToggled(){
+	if(fixMissingIssuesCheckBox_->isChecked() && fixClosedIssuesWithoutChildrenCheckBox_->isChecked() && fixClosedIssuesWithChildrenCheckBox_->isChecked())
+		fixButton_->setEnabled(true);
+	else
+		fixButton_->setEnabled(false);
 }

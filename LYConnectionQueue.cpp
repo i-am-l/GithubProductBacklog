@@ -1,7 +1,5 @@
 #include "LYConnectionQueue.h"
 
-#include <QDebug>
-
 LYConnectionQueue::LYConnectionQueue(QObject *parent) :
 	QObject(parent)
 {
@@ -33,7 +31,6 @@ void LYConnectionQueue::startQueue(){
 
 void LYConnectionQueue::stopQueue(){
 	queueStopped_ = true;
-	qDebug() << "Stopping queue";
 }
 
 void LYConnectionQueue::clearQueue(){

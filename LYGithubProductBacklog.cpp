@@ -24,6 +24,11 @@ QAbstractItemModel* LYGithubProductBacklog::model() const{
 	return productBacklogModel_;
 }
 
+void LYGithubProductBacklog::fixStartupIssues(){
+	productBacklogModel_->fixParseIssues(orderingInformation_, issues_);
+	uploadChanges();
+}
+
 void LYGithubProductBacklog::uploadChanges(){
 	createUploadChangesConnectionQueue();
 	QVariantList arguments;
@@ -51,16 +56,28 @@ void LYGithubProductBacklog::setRepository(const QString &repository){
 		startupConnectionQueue_.startQueue();
 }
 
-void LYGithubProductBacklog::acceptAppendMissingIssues(){
-
+QStringList LYGithubProductBacklog::missingIssues() const{
+	QStringList retVal;
+	QList<int> unorderedIssuesFound = productBacklogModel_->unorderedIssuesFound();
+	for(int x = 0; x < unorderedIssuesFound.count(); x++)
+		retVal.append(QString("%1 - %2").arg(unorderedIssuesFound.at(x)).arg(productBacklogModel_->titleFromIssueNumber(unorderedIssuesFound.at(x))));
+	return retVal;
 }
 
-void LYGithubProductBacklog::acceptRemoveClosedIssuesWithoutChildren(){
-
+QStringList LYGithubProductBacklog::orderedIssuesWithoutChildren() const{
+	QStringList retVal;
+	QList<int> orderedIssuesWithoutChildrenNotFound = productBacklogModel_->orderedIssuesWithoutChildrenNotFound();
+	for(int x = 0; x < orderedIssuesWithoutChildrenNotFound.count(); x++)
+		retVal.append(QString("%1 - %2").arg(orderedIssuesWithoutChildrenNotFound.at(x)).arg(productBacklogModel_->titleFromIssueNumber(orderedIssuesWithoutChildrenNotFound.at(x))));
+	return retVal;
 }
 
-void LYGithubProductBacklog::acceptRemoveClosedIssuesWithChildren(){
-
+QStringList LYGithubProductBacklog::orderedIssuesWithChildren() const{
+	QStringList retVal;
+	QList<int> orderedIssuesWithChildrenNotFound = productBacklogModel_->orderedIssuesWithChildrenNotFound();
+	for(int x = 0; x < orderedIssuesWithChildrenNotFound.count(); x++)
+		retVal.append(QString("%1 - %2").arg(orderedIssuesWithChildrenNotFound.at(x)).arg(productBacklogModel_->titleFromIssueNumber(orderedIssuesWithChildrenNotFound.at(x))));
+	return retVal;
 }
 
 void LYGithubProductBacklog::onGitAuthenticated(bool wasAuthenticated){
@@ -73,27 +90,9 @@ void LYGithubProductBacklog::onGitAuthenticated(bool wasAuthenticated){
 }
 
 void LYGithubProductBacklog::onPopulateProductBacklogReturned(QList<QVariantMap> issues){
-	LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck = productBacklogModel_->parseList(orderingInformation_, issues);
-	qDebug() << "Sanity check: " << sanityCheck;
-	qDebug() << "Passed check " << sanityCheck.testFlag(LYProductBacklogModel::SanityCheckPassed);
-	qDebug() << "Failed check, issue not found " << sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedMissingIssue);
-	qDebug() << "Failed check, issue without children " << sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedFalseOrderedIssueNoChildren);
-	qDebug() << "Failed check, issue with children " << sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedFalseOrderedIssueWithChildren);
-
-	if(sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedFalseOrderedIssueWithChildren)){
-		qDebug() << "Ordered issues with chilren " << productBacklogModel_->orderedIssuesWithChildrenNotFound();
-		emit detectedClosedIssuesWithChildren(productBacklogModel_->orderedIssuesWithChildrenNotFound());
-	}
-	if(sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedFalseOrderedIssueNoChildren)){
-		qDebug() << "Ordered issues without children " << productBacklogModel_->orderedIssuesWithoutChildrenNotFound();
-		emit detectedClosedIssuesWithoutChildren(productBacklogModel_->orderedIssuesWithoutChildrenNotFound());
-	}
-	if(sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedMissingIssue)){
-		qDebug() << "Unordered issues " << productBacklogModel_->unorderedIssuesFound();
-		emit detectedMissingIssues(productBacklogModel_->unorderedIssuesFound());
-	}
-
-
+	issues_ = issues;
+	LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck = productBacklogModel_->parseList(orderingInformation_, issues_);
+	emit sanityCheckReturned(sanityCheck);
 }
 
 void LYGithubProductBacklog::onPopulateProductBacklogOrderingFindIssueReturned(QList<QVariantMap> issues){
@@ -102,13 +101,16 @@ void LYGithubProductBacklog::onPopulateProductBacklogOrderingFindIssueReturned(Q
 		if(issues.at(x).value("title").toString() == "ProductBacklogInfo")
 			issueNumber = issues.at(x).value("number").toInt();
 
+	closedIssues_ = issues;
+	productBacklogModel_->setClosedIssues(closedIssues_);
+
 	if(issueNumber > 0){
 		QVariantList arguments;
 		arguments.append(QVariant(issueNumber));
 		startupConnectionQueue_.first()->setInitiatorArguments(arguments);
 	}
 	else{
-		startupConnectionQueue_.startQueue();
+		startupConnectionQueue_.stopQueue();
 		startupConnectionQueue_.clearQueue();
 	}
 }
@@ -126,9 +128,6 @@ void LYGithubProductBacklog::onPopulateProductBacklogOrderingDirectOrderingComme
 
 void LYGithubProductBacklog::onUploadChangedCheckedOrderingReturn(QVariantMap comment){
 	QString repositoryCurrentOrdering = comment.value("body").toString();
-	qDebug() << "Are they the same? " << (repositoryCurrentOrdering == orderingInformation_);
-	qDebug() << repositoryCurrentOrdering;
-	qDebug() << orderingInformation_;
 
 	if(repositoryCurrentOrdering == orderingInformation_){
 		qDebug() << "No repository side changes, proceeding with updates";
@@ -148,7 +147,7 @@ void LYGithubProductBacklog::onUploadChangedCheckedOrderingReturn(QVariantMap co
 }
 
 void LYGithubProductBacklog::onUploadChangesReturned(QVariantMap comment){
-	Q_UNUSED(comment)
+	orderingInformation_ = comment.value("body").toString();
 	activeChanges_ = false;
 	emit activeChanges(false);
 }

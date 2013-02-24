@@ -48,9 +48,11 @@ public:
 	/// Re-implemented from QAbstractItemModel to deal with dropping when re-ordering the queue via drag-and-drop
 	virtual Qt::DropActions supportedDropActions() const;
 
+	void setClosedIssues(QList<QVariantMap> closedIssues);
 	LYProductBacklogModel::ProductBacklogSanityChecks parseList(const QString &orderingInformation, QList<QVariantMap> issues);
-	bool appendMissingIssues(const QString &orderingInformation, QList<QVariantMap> issues);
-	bool removeClosedIssuesWithoutChildren(const QString &orderingInformation, QList<QVariantMap> issues);
+	bool fixParseIssues(const QString &orderingInformation, QList<QVariantMap> issues);
+	//bool appendMissingIssues(const QString &orderingInformation, QList<QVariantMap> issues);
+	//bool removeClosedIssuesWithoutChildren(const QString &orderingInformation, QList<QVariantMap> issues);
 
 	void clear();
 
@@ -59,6 +61,7 @@ public:
 	const QList<int> orderedIssuesWithoutChildrenNotFound() const;
 	const QList<int> orderedIssuesWithChildrenNotFound() const;
 	const QList<int> unorderedIssuesFound() const;
+	QString titleFromIssueNumber(int issueNumber) const;
 
 protected:
 	QMap<int, int> parseListNotation(const QString &orderingInformation) const;
@@ -68,6 +71,7 @@ protected:
 
 	QStringList internalParseToFlatList(const QString &orderingInformation) const;
 	LYProductBacklogModel::ProductBacklogSanityChecks internalDoSanityChecks(const QString &orderingInformation, QList<QVariantMap> issues);
+	bool internalParseListWithOptions(const QString &orderingInformation, QList<QVariantMap> issues, bool appendMissingIssues = false, bool removeClosedIssuesWithoutChildren = false);
 
 	void setInternalData(QMap<int, LYProductBacklogItem*> allIssues, QList<int> orderingInformation);
 
@@ -78,8 +82,10 @@ signals:
 	void modelRefreshed();
 
 protected:
-	QMap<int, LYProductBacklogItem*> allIssues_;
+	QMap<int, LYProductBacklogItem*> allOpenIssues_;
 	QList<int> orderingInformation_;
+	QList<QVariantMap> closedIssues_;
+	QMap<int, QString> allIssuesToTitle_;
 
 	QList<int> orderedIssuesWithoutChildrenNotFound_;
 	QList<int> orderedIssuesWithChildrenNotFound_;

@@ -5,22 +5,12 @@
 LYGithubManager::LYGithubManager(QObject *parent) :
 	QObject(parent)
 {
-	//qRegisterMetaType<LYGithubManager::IssuesFilter>("IssuesFilter");
-	//qRegisterMetaType<LYGithubManager::IssuesState>("IssuesState");
-	//qRegisterMetaType<LYGithubManager::IssuesSort>("IssuesSort");
-	//qRegisterMetaType<LYGithubManager::IssuesDirection>("IssuesDirection");
-
 	initialize();
 }
 
 LYGithubManager::LYGithubManager(const QString &userName, const QString &password, const QString &repository, QObject *parent) :
 	QObject(parent)
 {
-	//qRegisterMetaType<LYGithubManager::IssuesFilter>("IssuesFilter");
-	//qRegisterMetaType<LYGithubManager::IssuesState>("IssuesState");
-	//qRegisterMetaType<LYGithubManager::IssuesSort>("IssuesSort");
-	//qRegisterMetaType<LYGithubManager::IssuesDirection>("IssuesDirection");
-
 	initialize();
 	userName_ = userName;
 	password_ = password;

@@ -3,7 +3,6 @@
 LYProductBacklogModel::LYProductBacklogModel(QObject *parent) :
 	QAbstractItemModel(parent)
 {
-
 }
 
 QModelIndex LYProductBacklogModel::index(int row, int column, const QModelIndex &parent) const{
@@ -15,10 +14,10 @@ QModelIndex LYProductBacklogModel::index(int row, int column, const QModelIndex 
 	if(!parent.isValid()){
 		int foundTopLevels = 0;
 		for(int x = 0; x < orderingInformation_.count(); x++){
-			if(allIssues_.value(orderingInformation_.at(x))->parentIssueNumber() == -1)
+			if(allOpenIssues_.value(orderingInformation_.at(x))->parentIssueNumber() == -1)
 				foundTopLevels++;
 			if(foundTopLevels == row+1)
-				return createIndex(row, column, allIssues_.value(orderingInformation_.at(x)));
+				return createIndex(row, column, allOpenIssues_.value(orderingInformation_.at(x)));
 		}
 		return QModelIndex();
 	}
@@ -28,13 +27,13 @@ QModelIndex LYProductBacklogModel::index(int row, int column, const QModelIndex 
 		if(!parentProductBacklogItem)
 			return QModelIndex();
 
-		int parentIndexInList = orderingInformation_.indexOf(allIssues_.key(parentProductBacklogItem));
+		int parentIndexInList = orderingInformation_.indexOf(allOpenIssues_.key(parentProductBacklogItem));
 		int siblingsFound = 0;
 		for(int x = parentIndexInList; x < orderingInformation_.count(); x++){
-			if(allIssues_.value(orderingInformation_.at(x))->parentIssueNumber() == parentProductBacklogItem->issueNumber())
+			if(allOpenIssues_.value(orderingInformation_.at(x))->parentIssueNumber() == parentProductBacklogItem->issueNumber())
 				siblingsFound++;
 			if(siblingsFound == row+1)
-				return createIndex(row, column, allIssues_.value(orderingInformation_.at(x)));
+				return createIndex(row, column, allOpenIssues_.value(orderingInformation_.at(x)));
 		}
 		return QModelIndex();
 	}
@@ -50,8 +49,8 @@ QModelIndex LYProductBacklogModel::parent(const QModelIndex &child) const
 		return QModelIndex();
 
 	for(int x = 0; x < orderingInformation_.count(); x++)
-		if(allIssues_.value(orderingInformation_.at(x))->issueNumber() == childProductBacklogItem->parentIssueNumber())
-			return indexForProductBacklogItem(allIssues_.value(orderingInformation_.at(x)));
+		if(allOpenIssues_.value(orderingInformation_.at(x))->issueNumber() == childProductBacklogItem->parentIssueNumber())
+			return indexForProductBacklogItem(allOpenIssues_.value(orderingInformation_.at(x)));
 
 	return QModelIndex();
 }
@@ -62,7 +61,7 @@ int LYProductBacklogModel::rowCount(const QModelIndex &parent) const
 	if(!parent.isValid()){
 		int topLevelsFound = 0;
 		for(int x = 0; x < orderingInformation_.count(); x++)
-			if(allIssues_.value(orderingInformation_.at(x))->parentIssueNumber() == -1)
+			if(allOpenIssues_.value(orderingInformation_.at(x))->parentIssueNumber() == -1)
 				topLevelsFound++;
 
 		return topLevelsFound;
@@ -74,9 +73,9 @@ int LYProductBacklogModel::rowCount(const QModelIndex &parent) const
 			return 0;
 		}
 		int childrenFound = 0;
-		int parentIndexInList = orderingInformation_.indexOf(allIssues_.key(parentProductBacklogItem));
+		int parentIndexInList = orderingInformation_.indexOf(allOpenIssues_.key(parentProductBacklogItem));
 		for(int x = parentIndexInList; x < orderingInformation_.count(); x++)//might optimize to figure a good ending point
-			if(allIssues_.value(orderingInformation_.at(x))->parentIssueNumber() == parentProductBacklogItem->issueNumber())
+			if(allOpenIssues_.value(orderingInformation_.at(x))->parentIssueNumber() == parentProductBacklogItem->issueNumber())
 				childrenFound++;
 
 		return childrenFound;
@@ -153,10 +152,10 @@ QModelIndex LYProductBacklogModel::indexForProductBacklogItem(LYProductBacklogIt
 		// top level productBacklogItem
 		int topLevelBefore = 0;
 		for(int x = 0; x < orderingInformation_.count(); x++){
-			if(allIssues_.value(orderingInformation_.at(x)) == productBacklogItem){
+			if(allOpenIssues_.value(orderingInformation_.at(x)) == productBacklogItem){
 				return createIndex(topLevelBefore, 0, productBacklogItem);
 			}
-			if(allIssues_.value(orderingInformation_.at(x))->parentIssueNumber() == -1)
+			if(allOpenIssues_.value(orderingInformation_.at(x))->parentIssueNumber() == -1)
 				topLevelBefore++;
 		}
 		return QModelIndex();
@@ -164,16 +163,16 @@ QModelIndex LYProductBacklogModel::indexForProductBacklogItem(LYProductBacklogIt
 	else{
 		// we have a parent productBacklogItem
 		bool foundParent = false;
-		int backwardsIndex = orderingInformation_.indexOf(allIssues_.key(productBacklogItem)); //find myself
+		int backwardsIndex = orderingInformation_.indexOf(allOpenIssues_.key(productBacklogItem)); //find myself
 		int numberOfSiblings = 0;
 		while(!foundParent){
 			if(backwardsIndex == 0){
 				return QModelIndex();
 			}
 			backwardsIndex--;
-			if(allIssues_.value(orderingInformation_.at(backwardsIndex))->issueNumber() == productBacklogItem->parentIssueNumber()) //mark parent found if id matches
+			if(allOpenIssues_.value(orderingInformation_.at(backwardsIndex))->issueNumber() == productBacklogItem->parentIssueNumber()) //mark parent found if id matches
 				foundParent = true;
-			else if(allIssues_.value(orderingInformation_.at(backwardsIndex))->parentIssueNumber() == productBacklogItem->parentIssueNumber()) //or increment the number of your siblings
+			else if(allOpenIssues_.value(orderingInformation_.at(backwardsIndex))->parentIssueNumber() == productBacklogItem->parentIssueNumber()) //or increment the number of your siblings
 				numberOfSiblings++;
 		}
 		return createIndex(numberOfSiblings, 0, productBacklogItem);
@@ -295,63 +294,19 @@ Qt::DropActions LYProductBacklogModel::supportedDropActions() const{
 	return (Qt::MoveAction | Qt::IgnoreAction);
 }
 
-#include <QDebug>
+void LYProductBacklogModel::setClosedIssues(QList<QVariantMap> closedIssues){
+	closedIssues_ = closedIssues;
+	for(int x = 0; x < closedIssues_.count(); x++)
+		if(!allIssuesToTitle_.contains(closedIssues_.at(x).value("number").toInt()))
+			allIssuesToTitle_.insert(closedIssues_.at(x).value("number").toInt(), closedIssues_.at(x).value("title").toString());
+}
+
 LYProductBacklogModel::ProductBacklogSanityChecks LYProductBacklogModel::parseList(const QString &orderingInformation, QList<QVariantMap> issues){
-
-	/*
-	QString partialOrderingParse = orderingInformation;
-	partialOrderingParse.replace('{', ';');
-	partialOrderingParse.replace("};", "");
-	QStringList orderingList = partialOrderingParse.split(";", QString::SkipEmptyParts);
-	*/
-	QStringList orderingList = internalParseToFlatList(orderingInformation);
-
-	/*
-	QList<int> localOrderingList;
-	QList<int> localMissingList;
-	for(int x = 0; x < orderingList.count(); x++)
-		localOrderingList.append(orderingList.at(x).toInt());
-
-	for(int x = 0; x < issues.count(); x++){
-		if(localOrderingList.contains(issues.at(x).value("number").toInt()))
-			localOrderingList.removeAll(issues.at(x).value("number").toInt());
-		else
-			localMissingList.append(issues.at(x).value("number").toInt());
-	}
-
-	orderedIssuesWithoutChildrenNotFound_.clear();
-	orderedIssuesWithChildrenNotFound_.clear();
-	unorderedIssuesFound_.clear();
-	orderedIssuesWithoutChildrenNotFound_ = localOrderingList;
-	unorderedIssuesFound_ = localMissingList;
-
-	qDebug() << orderedIssuesWithoutChildrenNotFound_ << unorderedIssuesFound_;
-
-
-	QMap<int, int> issueNumberToParentIssueNumber = parseListNotation(orderingInformation);
-
-	LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck = LYProductBacklogModel::SanityCheckPassed;
-	QList<int> localOrderedIssuesNotFound = orderedIssuesWithoutChildrenNotFound_;
-	for(int x = 0; x < orderedIssuesWithoutChildrenNotFound_.count(); x++){
-		if(issueNumberToParentIssueNumber.keys(orderedIssuesWithoutChildrenNotFound_.at(x)).count() > 0){
-			sanityCheck |= LYProductBacklogModel::SanityCheckFailedFalseOrderedIssueWithChildren;
-			localOrderedIssuesNotFound.removeAll(orderedIssuesWithoutChildrenNotFound_.at(x));
-			orderedIssuesWithChildrenNotFound_.append(orderedIssuesWithoutChildrenNotFound_.at(x));
-		}
-	}
-	orderedIssuesWithoutChildrenNotFound_ = localOrderedIssuesNotFound;
-	if(orderedIssuesWithoutChildrenNotFound_.count() > 0)
-		sanityCheck |= LYProductBacklogModel::SanityCheckFailedFalseOrderedIssueNoChildren;
-	if(unorderedIssuesFound_.count() > 0)
-		sanityCheck |= LYProductBacklogModel::SanityCheckFailedMissingIssue;
-
-	if(sanityCheck != LYProductBacklogModel::SanityCheckPassed)
-		return sanityCheck;
-	*/
 	LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck = internalDoSanityChecks(orderingInformation, issues);
 	if(sanityCheck != LYProductBacklogModel::SanityCheckPassed)
 		return sanityCheck;
 
+	/*
 	clear();
 	QMap<int, int> issueNumberToParentIssueNumber = parseListNotation(orderingInformation);
 	LYProductBacklogItem *newIssueItem;
@@ -366,27 +321,35 @@ LYProductBacklogModel::ProductBacklogSanityChecks LYProductBacklogModel::parseLi
 	for(int x = 0; x < orderingList.count(); x++)
 		newOrderingInformation.append(orderingList.at(x).toInt());
 	setInternalData(newAllIssues, newOrderingInformation);
+	*/
+	internalParseListWithOptions(orderingInformation, issues);
 
 	return sanityCheck;
 }
 
-bool LYProductBacklogModel::appendMissingIssues(const QString &orderingInformation, QList<QVariantMap> issues){
+bool LYProductBacklogModel::fixParseIssues(const QString &orderingInformation, QList<QVariantMap> issues){
+	return internalParseListWithOptions(orderingInformation, issues, true, true);
+}
 
+/*
+bool LYProductBacklogModel::appendMissingIssues(const QString &orderingInformation, QList<QVariantMap> issues){
+	return internalParseListWithOptions(orderingInformation, issues, true);
 }
 
 bool LYProductBacklogModel::removeClosedIssuesWithoutChildren(const QString &orderingInformation, QList<QVariantMap> issues){
-
+	return internalParseListWithOptions(orderingInformation, issues, false, true);
 }
+*/
 
 void LYProductBacklogModel::setInternalData(QMap<int, LYProductBacklogItem *> allIssues, QList<int> orderingInformation){
 	emit beginResetModel();
-	allIssues_ = allIssues;
+	allOpenIssues_ = allIssues;
 	orderingInformation_ = orderingInformation;
 	emit endResetModel();
 }
 
 void LYProductBacklogModel::clear(){
-	allIssues_.clear();
+	allOpenIssues_.clear();
 	orderingInformation_.clear();
 }
 
@@ -407,6 +370,12 @@ const QList<int> LYProductBacklogModel::orderedIssuesWithChildrenNotFound() cons
 
 const QList<int> LYProductBacklogModel::unorderedIssuesFound() const{
 	return unorderedIssuesFound_;
+}
+
+QString LYProductBacklogModel::titleFromIssueNumber(int issueNumber) const{
+	if(allIssuesToTitle_.contains(issueNumber))
+		return allIssuesToTitle_.value(issueNumber);
+	return "??";
 }
 
 QMap<int, int> LYProductBacklogModel::parseListNotation(const QString &orderingInformation) const{
@@ -468,6 +437,10 @@ QStringList LYProductBacklogModel::internalParseToFlatList(const QString &orderi
 LYProductBacklogModel::ProductBacklogSanityChecks LYProductBacklogModel::internalDoSanityChecks(const QString &orderingInformation, QList<QVariantMap> issues){
 	QStringList orderingList = internalParseToFlatList(orderingInformation);
 
+	orderedIssuesWithoutChildrenNotFound_.clear();
+	orderedIssuesWithChildrenNotFound_.clear();
+	unorderedIssuesFound_.clear();
+
 	QList<int> localOrderingList;
 	QList<int> localMissingList;
 	for(int x = 0; x < orderingList.count(); x++)
@@ -478,15 +451,15 @@ LYProductBacklogModel::ProductBacklogSanityChecks LYProductBacklogModel::interna
 			localOrderingList.removeAll(issues.at(x).value("number").toInt());
 		else
 			localMissingList.append(issues.at(x).value("number").toInt());
+
+		if(!allIssuesToTitle_.contains(issues.at(x).value("number").toInt()))
+			allIssuesToTitle_.insert(issues.at(x).value("number").toInt(), issues.at(x).value("title").toString());
+
 	}
 
-	orderedIssuesWithoutChildrenNotFound_.clear();
-	orderedIssuesWithChildrenNotFound_.clear();
-	unorderedIssuesFound_.clear();
+
 	orderedIssuesWithoutChildrenNotFound_ = localOrderingList;
 	unorderedIssuesFound_ = localMissingList;
-
-	qDebug() << orderedIssuesWithoutChildrenNotFound_ << unorderedIssuesFound_;
 
 
 	QMap<int, int> issueNumberToParentIssueNumber = parseListNotation(orderingInformation);
@@ -507,6 +480,48 @@ LYProductBacklogModel::ProductBacklogSanityChecks LYProductBacklogModel::interna
 		sanityCheck |= LYProductBacklogModel::SanityCheckFailedMissingIssue;
 
 	return sanityCheck;
+}
+
+bool LYProductBacklogModel::internalParseListWithOptions(const QString &orderingInformation, QList<QVariantMap> issues, bool appendMissingIssues, bool removeClosedIssuesWithoutChildren){
+	LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck = internalDoSanityChecks(orderingInformation, issues);
+
+	if(sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedMissingIssue) && !appendMissingIssues)
+		return false;
+	if(sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedFalseOrderedIssueNoChildren) && !removeClosedIssuesWithoutChildren)
+		return false;
+
+	clear();
+	QString localOrderingInformation = orderingInformation;
+
+	if(sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedMissingIssue) && appendMissingIssues){
+		for(int x = 0; x < unorderedIssuesFound_.count(); x++)
+			localOrderingInformation.append(QString("%1;").arg(unorderedIssuesFound_.at(x)));
+	}
+
+	QStringList orderingList = internalParseToFlatList(localOrderingInformation);
+	QMap<int, int> issueNumberToParentIssueNumber = parseListNotation(localOrderingInformation);
+
+	QList<int> newOrderingInformation;
+	for(int x = 0; x < orderingList.count(); x++)
+		newOrderingInformation.append(orderingList.at(x).toInt());
+
+	if(sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedFalseOrderedIssueNoChildren) && removeClosedIssuesWithoutChildren){
+		for(int x = 0; x < orderedIssuesWithoutChildrenNotFound_.count(); x++){
+			newOrderingInformation.removeAll(orderedIssuesWithoutChildrenNotFound_.at(x));
+			issueNumberToParentIssueNumber.remove(orderedIssuesWithoutChildrenNotFound_.at(x));
+		}
+	}
+
+	LYProductBacklogItem *newIssueItem;
+	QMap<int, LYProductBacklogItem*> newAllIssues;
+	for(int x = 0; x < issues.count(); x++){
+		newIssueItem = new LYProductBacklogItem(issues.at(x).value("number").toString() + " - " + issues.at(x).value("title").toString(), issues.at(x).value("number").toInt(), issueNumberToParentIssueNumber.value(issues.at(x).value("number").toInt()));
+		newAllIssues.insert(newIssueItem->issueNumber(), newIssueItem);
+	}
+
+	setInternalData(newAllIssues, newOrderingInformation);
+
+	return true;
 }
 
 LYProductBacklogItem::LYProductBacklogItem(const QString &issueTitle, int issueNumber, int parentIssueNumber)
