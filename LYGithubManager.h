@@ -74,7 +74,7 @@ signals:
 	/// Notifier that contains the new values for the comment
 	void singleCommentEdited(QVariantMap comment);
 	/// Notifier whether or not an issue was successfully created.
-	void issueCreated(bool issueCreated);
+	void issueCreated(bool issueCreated, QVariantMap newIssue);
 
 protected slots:
 	/// Slot handling the authentication response.

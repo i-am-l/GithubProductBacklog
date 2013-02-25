@@ -332,12 +332,18 @@ void LYGithubManager::onEditSingleCommentReturned(){
 void LYGithubManager::onCreateNewIssueReturned(){
 	QJson::Parser parser;
 	bool retVal = false;
+	QVariantMap retMap;
 	if(createNewIssueReply_->rawHeader("Status") == "201 Created")
 		retVal = true;
+
+	QVariant githubFullReply = parser.parse(createNewIssueReply_->readAll());
+	if(githubFullReply.canConvert(QVariant::Map))
+		retMap = githubFullReply.toMap();
+
 	disconnect(createNewIssueReply_, 0);
 	createNewIssueReply_->deleteLater();
 	createNewIssueReply_ = 0;
-	emit issueCreated(retVal);
+	emit issueCreated(retVal, retMap);
 }
 
 void LYGithubManager::onSomeErrorOccured(QNetworkReply::NetworkError nError){

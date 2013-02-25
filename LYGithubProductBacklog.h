@@ -81,7 +81,7 @@ protected slots:
 	void onUploadChangesReturned(QVariantMap comment);
 
 	/// Handles the return from the github manager with the success state of the newly created issue
-	void onCreateNewIssueReturned(bool issueCreatedSuccessfully);
+	void onCreateNewIssueReturned(bool issueCreatedSuccessfully, QVariantMap newIssue);
 
 	/// Emitted when the model has been refreshed
 	void onProductBacklogModelRefreshed();

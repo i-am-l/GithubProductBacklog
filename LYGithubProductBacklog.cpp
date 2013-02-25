@@ -166,8 +166,18 @@ void LYGithubProductBacklog::onUploadChangesReturned(QVariantMap comment){
 	emit activeChanges(false);
 }
 
-void LYGithubProductBacklog::onCreateNewIssueReturned(bool issueCreatedSuccessfully){
+void LYGithubProductBacklog::onCreateNewIssueReturned(bool issueCreatedSuccessfully, QVariantMap newIssue){
 	emit newIssueCreated(issueCreatedSuccessfully);
+
+	if(issueCreatedSuccessfully){
+		QString updatedOrderingInformation = orderingInformation_;
+		updatedOrderingInformation.append(QString("%1;").arg(newIssue.value("number").toInt()));
+		QList<QVariantMap> updatedIssues = issues_;
+		updatedIssues.append(newIssue);
+
+		productBacklogModel_->parseList(updatedOrderingInformation, updatedIssues);
+		uploadChanges();
+	}
 }
 
 void LYGithubProductBacklog::onProductBacklogModelRefreshed(){
@@ -267,8 +277,8 @@ void LYGithubProductBacklog::createCreateNewIssueConnectionQueue(){
 	createNewIssueConnectionQueue_.clearQueue();
 
 	LYConnectionQueueObject *connectionQueueObject = new LYConnectionQueueObject(this);
-	connectionQueueObject->setSender(githubManager_, SIGNAL(issueCreated(bool)));
-	connectionQueueObject->setReceiver(this, SLOT(onCreateNewIssueReturned(bool)));
+	connectionQueueObject->setSender(githubManager_, SIGNAL(issueCreated(bool, QVariantMap)));
+	connectionQueueObject->setReceiver(this, SLOT(onCreateNewIssueReturned(bool, QVariantMap)));
 	connectionQueueObject->setInitiatorObject(githubManager_, SLOT(createNewIssue(QString,QString)));
 	createNewIssueConnectionQueue_.pushBackConnectionQueueObject(connectionQueueObject);
 }
