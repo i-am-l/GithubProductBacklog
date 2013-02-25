@@ -57,10 +57,12 @@ signals:
 	/// Reports that the github manager has created a new issue
 	void newIssueCreated(bool successfullyCreated);
 	/// Reports that the github manager has closed an issue
-	void issueClosed(bool successfullClosed);
+	void issueClosed(bool successfullyClosed);
 
 	/// Reports that there are active changes to the model that are not yet uploaded to the remote repository
 	void activeChanges(bool hasActiveChanges);
+	/// Reports that changes were successfully uploaded
+	void uploaded(bool successfullyUploaded);
 
 	/// Emitted after startup once the sanity checks have been done. Used to generate the dialog for handling sanity check problems.
 	void sanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck);

@@ -1,7 +1,5 @@
 #include "LYGithubProductBacklog.h"
 
-#include <QDebug>
-
 LYGithubProductBacklog::LYGithubProductBacklog(const QString &username, const QString &password, const QString &repository, QObject *parent) :
 	QObject(parent)
 {
@@ -104,11 +102,6 @@ QStringList LYGithubProductBacklog::orderedIssuesWithChildren() const{
 }
 
 void LYGithubProductBacklog::onGitAuthenticated(bool wasAuthenticated){
-	if(wasAuthenticated)
-		qDebug() << "Successfully authenticated";
-	else
-		qDebug() << "Could not authenticate";
-
 	emit authenticated(wasAuthenticated);
 }
 
@@ -152,8 +145,9 @@ void LYGithubProductBacklog::onPopulateProductBacklogOrderingDirectOrderingComme
 void LYGithubProductBacklog::onUploadChangedCheckedOrderingReturn(QVariantMap comment){
 	QString repositoryCurrentOrdering = comment.value("body").toString();
 
+	bool successfullyUploaded = false;
 	if(repositoryCurrentOrdering == orderingInformation_){
-		qDebug() << "No repository side changes, proceeding with updates";
+		successfullyUploaded = true;
 
 		QString newOrderingInformation = productBacklogModel_->generateListNotation();
 		QVariantList arguments;
@@ -164,9 +158,8 @@ void LYGithubProductBacklog::onUploadChangedCheckedOrderingReturn(QVariantMap co
 	else{
 		uploadChangesConnectionQueue_.stopQueue();
 		uploadChangesConnectionQueue_.clearQueue();
-
-		qDebug() << "Repository side changes detected, cannot proceed with updates";
 	}
+	emit uploaded(successfullyUploaded);
 }
 
 void LYGithubProductBacklog::onUploadChangesReturned(QVariantMap comment){
@@ -228,6 +221,7 @@ bool LYGithubProductBacklog::authenticateHelper(){
 	return true;
 }
 
+#include <QDebug>
 void LYGithubProductBacklog::printGithubMapRecursive(QVariantMap map, int indentation){
 	QMap<QString, QVariant> iMap = map;
 	QMap<QString, QVariant>::const_iterator i = iMap.constBegin();

@@ -28,6 +28,8 @@ public:
 signals:
 	/// Emitted when we decide to quit, received by the main window
 	void requestQuit();
+	/// Emitted when we wish to have text displayed in the main window's status bar
+	void requestStatusBarMessage(const QString &message, int timeout);
 
 protected slots:
 	/// Handles the communication from the authentication view regarding new username, password, and repository
@@ -37,6 +39,8 @@ protected slots:
 
 	/// Handles interaction with the Upload Changes button
 	void onUploadChangesButtonClicked();
+	/// Handles uploaded signal from the product backlog
+	void onUploaded(bool successfullyUploaded);
 
 	/// Enables and disables the uploadChangesButton based on whether the list has been modified by the user
 	void onActiveChangesChanged(bool hasActiveChanges);

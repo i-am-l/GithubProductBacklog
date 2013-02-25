@@ -17,6 +17,8 @@ public:
 protected slots:
 	/// Handles a request from the main widget to quit the application
 	void onRequestQuit();
+	/// Handles a request from the main widget to display message to the status bar
+	void onRequestStatusBarMessage(const QString &message, int timeout);
 
 protected:
 	/// Holds the central widget

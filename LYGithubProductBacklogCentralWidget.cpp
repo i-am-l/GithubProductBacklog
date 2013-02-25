@@ -42,6 +42,7 @@ LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(QWidget
 	connect(productBacklog_, SIGNAL(activeChanges(bool)), this, SLOT(onActiveChangesChanged(bool)));
 	connect(uploadChangesButton_, SIGNAL(clicked()), this, SLOT(onUploadChangesButtonClicked()));
 	connect(productBacklog_, SIGNAL(authenticated(bool)), this, SLOT(onAuthenticated(bool)));
+	connect(productBacklog_, SIGNAL(uploaded(bool)), this, SLOT(onUploaded(bool)));
 
 	connect(productBacklog_, SIGNAL(sanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks)), this, SLOT(onSanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks)));
 
@@ -63,10 +64,22 @@ void LYGithubProductBacklogCentralWidget::onSubmitAuthenticationInformationAvail
 
 void LYGithubProductBacklogCentralWidget::onAuthenticated(bool authenticated){
 	authenticationView_->setAuthenticated(authenticated);
+
+	if(authenticated)
+		emit requestStatusBarMessage("Successfully Authenticated", 3000);
+	else
+		emit requestStatusBarMessage("Failed to Authenticate", 3000);
 }
 
 void LYGithubProductBacklogCentralWidget::onUploadChangesButtonClicked(){
 	productBacklog_->uploadChanges();
+}
+
+void LYGithubProductBacklogCentralWidget::onUploaded(bool successfullyUploaded){
+	if(successfullyUploaded)
+		emit requestStatusBarMessage("Successfully Uploaded Changes to Github", 5000);
+	else
+		emit requestStatusBarMessage("Failed to Upload Changes to Github", 5000);
 }
 
 void LYGithubProductBacklogCentralWidget::onActiveChangesChanged(bool hasActiveChanges){
@@ -86,12 +99,11 @@ void LYGithubProductBacklogCentralWidget::onAddIssueButtonClicked(){
 	addIssueView->exec();
 }
 
-#include <QDebug>
 void LYGithubProductBacklogCentralWidget::onCloseIssueButtonClicked(){
 	if(!productBacklog_->productBacklogModel()->hasChildren(treeView_->currentIndex()))
 		productBacklog_->closeIssue(productBacklog_->productBacklogModel()->productBacklogItem(treeView_->currentIndex())->issueNumber());
 	else
-		qDebug() << "Can't remove this one, he has open child issues";
+		QMessageBox::warning(this, "Cannot Close This Issue", "This issue has open children, it cannot be closed", QMessageBox::Ok);
 }
 
 void LYGithubProductBacklogCentralWidget::onSanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck){
