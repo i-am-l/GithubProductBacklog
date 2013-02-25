@@ -237,6 +237,33 @@ void LYGithubManager::createNewIssue(const QString &title, const QString &body, 
 	connect(createNewIssueReply_, SIGNAL(readyRead()), this, SLOT(onCreateNewIssueReturned()));
 }
 
+void LYGithubManager::closeIssue(int issueNumber){
+	if(!isAuthenticated() || repository_.isEmpty() || closeIssueReply_)
+		return;
+	QNetworkRequest request;
+
+	QString commentURL = QString("https://api.github.com/repos/%1/issues/%2").arg(repository_).arg(issueNumber);
+	request.setUrl(QUrl(commentURL));
+
+	QString userInfo = userName_+":"+password_;
+	QByteArray userData = userInfo.toLocal8Bit().toBase64();
+	QString headerData = "Basic " + userData;
+	request.setRawHeader("Authorization", headerData.toLocal8Bit());
+
+	QVariantMap jdata;
+	jdata["state"] = "closed";
+	QJson::Serializer jserializer;
+	QByteArray jsonData = jserializer.serialize(jdata);
+
+	QBuffer *buffer = new QBuffer;
+	buffer->setData(jsonData);
+	buffer->open(QIODevice::ReadOnly);
+	closeIssueReply_ = manager_->sendCustomRequest(request, "PATCH", buffer);
+	buffer->setParent(closeIssueReply_);
+
+	connect(closeIssueReply_, SIGNAL(readyRead()), this, SLOT(onCloseIssueReturned()));
+}
+
 void LYGithubManager::onAuthenicatedRequestReturned(){
 	QJson::Parser parser;
 	QVariant githubFullReply = parser.parse(authenticateReply_->readAll());
@@ -346,6 +373,23 @@ void LYGithubManager::onCreateNewIssueReturned(){
 	emit issueCreated(retVal, retMap);
 }
 
+void LYGithubManager::onCloseIssueReturned(){
+	QJson::Parser parser;
+	bool retVal = false;
+	QVariantMap retMap;
+	if(closeIssueReply_->rawHeader("Status") == "200 OK")
+		retVal = true;
+
+	QVariant githubFullReply = parser.parse(closeIssueReply_->readAll());
+	if(githubFullReply.canConvert(QVariant::Map))
+		retMap = githubFullReply.toMap();
+
+	disconnect(closeIssueReply_, 0);
+	closeIssueReply_->deleteLater();
+	closeIssueReply_ = 0;
+	emit issueClosed(retVal, retMap);
+}
+
 void LYGithubManager::onSomeErrorOccured(QNetworkReply::NetworkError nError){
 	qDebug() << "Error occurred " << nError;
 }
@@ -361,5 +405,6 @@ void LYGithubManager::initialize(){
 	getSingleCommentReply_ = 0;
 	editSingleCommentReply_ = 0;
 	createNewIssueReply_ = 0;
+	closeIssueReply_ = 0;
 	authenticated_ = false;
 }

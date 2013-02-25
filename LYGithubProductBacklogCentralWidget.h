@@ -43,6 +43,7 @@ protected slots:
 
 	void onTreeViewIndexClicked(const QModelIndex &index);
 	void onAddIssueButtonClicked();
+	void onCloseIssueButtonClicked();
 
 	/// Handles opening up the sanity check view if the sanity checks didn't pass on startup
 	void onSanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck);

@@ -61,6 +61,8 @@ public slots:
 	void editSingleComment(int commentId, const QString &newComment);
 	/// Slot that creates a new issue with the given \param title, \param body, and, optionally, an \param assignee.
 	void createNewIssue(const QString &title, const QString &body, const QString &assignee = QString());
+	/// Slot that closes an issue with the given \param issue number
+	void closeIssue(int issueNumber);
 
 signals:
 	/// Notifier that indicates whether we successfully authenticated with Github or not.
@@ -75,6 +77,8 @@ signals:
 	void singleCommentEdited(QVariantMap comment);
 	/// Notifier whether or not an issue was successfully created.
 	void issueCreated(bool issueCreated, QVariantMap newIssue);
+	/// Notifier whether or not an issue was successfully closed.
+	void issueClosed(bool issueClosed, QVariantMap closedIssue);
 
 protected slots:
 	/// Slot handling the authentication response.
@@ -89,6 +93,8 @@ protected slots:
 	void onEditSingleCommentReturned();
 	/// Slot handling the response when creating a new issue.
 	void onCreateNewIssueReturned();
+	/// Slot handling the reponse when closing an issue
+	void onCloseIssueReturned();
 
 	void onSomeErrorOccured(QNetworkReply::NetworkError nError);
 
@@ -114,6 +120,8 @@ protected:
 
 	/// Pointer specifically focusing on the create new issue network reply.
 	QNetworkReply *createNewIssueReply_;
+	/// Pointer specifically focusing on the closing of an existing issue  network reply.
+	QNetworkReply *closeIssueReply_;
 
 	/// Holds the user name used for connecting to Github.
 	QString userName_;

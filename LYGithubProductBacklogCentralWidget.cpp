@@ -47,6 +47,7 @@ LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(QWidget
 
 	connect(treeView_, SIGNAL(clicked(QModelIndex)), this, SLOT(onTreeViewIndexClicked(QModelIndex)));
 	connect(addIssueButton_, SIGNAL(clicked()), this, SLOT(onAddIssueButtonClicked()));
+	connect(closeIssueButton_, SIGNAL(clicked()), this, SLOT(onCloseIssueButtonClicked()));
 
 	authenticationView_ = new LYGithubProductBacklogAuthenticationView();
 	connect(authenticationView_, SIGNAL(submitAuthenticationInformation(QString,QString,QString)), this, SLOT(onSubmitAuthenticationInformationAvailable(QString,QString,QString)));
@@ -83,6 +84,14 @@ void LYGithubProductBacklogCentralWidget::onAddIssueButtonClicked(){
 	connect(addIssueView, SIGNAL(requestCreateNewIssue(QString,QString)), productBacklog_, SLOT(createNewIssue(QString,QString)));
 	connect(productBacklog_, SIGNAL(newIssueCreated(bool)), addIssueView, SLOT(onGitIssueCreated(bool)));
 	addIssueView->exec();
+}
+
+#include <QDebug>
+void LYGithubProductBacklogCentralWidget::onCloseIssueButtonClicked(){
+	if(!productBacklog_->productBacklogModel()->hasChildren(treeView_->currentIndex()))
+		productBacklog_->closeIssue(productBacklog_->productBacklogModel()->productBacklogItem(treeView_->currentIndex())->issueNumber());
+	else
+		qDebug() << "Can't remove this one, he has open child issues";
 }
 
 void LYGithubProductBacklogCentralWidget::onSanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck){

@@ -27,6 +27,8 @@ public slots:
 	void uploadChanges();
 	/// Called to create a new issue in the repository
 	void createNewIssue(const QString &title, const QString &body);
+	/// Called to close an issue by issue number
+	void closeIssue(int issueNumber);
 
 	/// Sets the username
 	void setUserName(const QString &username);
@@ -54,6 +56,8 @@ signals:
 
 	/// Reports that the github manager has created a new issue
 	void newIssueCreated(bool successfullyCreated);
+	/// Reports that the github manager has closed an issue
+	void issueClosed(bool successfullClosed);
 
 	/// Reports that there are active changes to the model that are not yet uploaded to the remote repository
 	void activeChanges(bool hasActiveChanges);
@@ -83,6 +87,9 @@ protected slots:
 	/// Handles the return from the github manager with the success state of the newly created issue
 	void onCreateNewIssueReturned(bool issueCreatedSuccessfully, QVariantMap newIssue);
 
+	/// Handles the return from the github manager with the success state of the close issue request
+	void onCloseIssueReturned(bool issueClosedSuccessfully, QVariantMap closedIssue);
+
 	/// Emitted when the model has been refreshed
 	void onProductBacklogModelRefreshed();
 
@@ -99,6 +106,8 @@ protected:
 	void createUploadChangesConnectionQueue();
 	/// Creates the list of connectionQueueObjects and places them in the createNewIssueConnectionQueue (clears the queue if necessary)
 	void createCreateNewIssueConnectionQueue();
+	/// Creates the list of connectionQueueObjects and places them in the closeIssueConnectionQueue (clears the queue if necessary)
+	void createCloseIssueConnectionQueue();
 
 protected:
 	/// Holds the object for communitcating with the github servers
@@ -132,6 +141,8 @@ protected:
 	LYConnectionQueue uploadChangesConnectionQueue_;
 	/// The queue of connections to create a new issue (create new issue)
 	LYConnectionQueue createNewIssueConnectionQueue_;
+	/// The queue of connections to close an existign issue (close issue)
+	LYConnectionQueue closeIssueConnectionQueue_;
 };
 
 #endif // LYGITHUBPRODUCTBACKLOG_H

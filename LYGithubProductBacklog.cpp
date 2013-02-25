@@ -52,6 +52,15 @@ void LYGithubProductBacklog::createNewIssue(const QString &title, const QString 
 	createNewIssueConnectionQueue_.startQueue();
 }
 
+void LYGithubProductBacklog::closeIssue(int issueNumber){
+	createCloseIssueConnectionQueue();
+	QVariantList arguments;
+	arguments.append(QVariant::fromValue(issueNumber));
+	closeIssueConnectionQueue_.first()->setInitiatorArguments(arguments);
+
+	closeIssueConnectionQueue_.startQueue();
+}
+
 void LYGithubProductBacklog::setUserName(const QString &username){
 	username_ = username;
 	if(authenticateHelper())
@@ -180,6 +189,23 @@ void LYGithubProductBacklog::onCreateNewIssueReturned(bool issueCreatedSuccessfu
 	}
 }
 
+void LYGithubProductBacklog::onCloseIssueReturned(bool issueClosedSuccessfully, QVariantMap closedIssue){
+	emit issueClosed(issueClosedSuccessfully);
+
+	if(issueClosedSuccessfully){
+		int closedIssueNumber = closedIssue.value("number").toInt();
+		QString updatedOrderingInformation = orderingInformation_;
+		updatedOrderingInformation.remove(QString("%1;").arg(closedIssueNumber));
+		QList<QVariantMap> updatedIssues = issues_;
+		for(int x = 0; x < updatedIssues.count(); x++)
+			if(updatedIssues.at(x).value("number").toInt() == closedIssueNumber)
+				updatedIssues.removeAt(x);
+
+		productBacklogModel_->parseList(updatedOrderingInformation, updatedIssues);
+		uploadChanges();
+	}
+}
+
 void LYGithubProductBacklog::onProductBacklogModelRefreshed(){
 	bool hasChanges = false;
 	if(orderingInformation_ != productBacklogModel_->generateListNotation())
@@ -281,4 +307,14 @@ void LYGithubProductBacklog::createCreateNewIssueConnectionQueue(){
 	connectionQueueObject->setReceiver(this, SLOT(onCreateNewIssueReturned(bool, QVariantMap)));
 	connectionQueueObject->setInitiatorObject(githubManager_, SLOT(createNewIssue(QString,QString)));
 	createNewIssueConnectionQueue_.pushBackConnectionQueueObject(connectionQueueObject);
+}
+
+void LYGithubProductBacklog::createCloseIssueConnectionQueue(){
+	closeIssueConnectionQueue_.clearQueue();
+
+	LYConnectionQueueObject *connectionQueueObject = new LYConnectionQueueObject(this);
+	connectionQueueObject->setSender(githubManager_, SIGNAL(issueClosed(bool,QVariantMap)));
+	connectionQueueObject->setReceiver(this, SLOT(onCloseIssueReturned(bool,QVariantMap)));
+	connectionQueueObject->setInitiatorObject(githubManager_, SLOT(closeIssue(int)));
+	closeIssueConnectionQueue_.pushBackConnectionQueueObject(connectionQueueObject);
 }
