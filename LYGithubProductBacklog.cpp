@@ -174,10 +174,9 @@ void LYGithubProductBacklog::onCreateNewIssueReturned(bool issueCreatedSuccessfu
 	if(issueCreatedSuccessfully){
 		QString updatedOrderingInformation = orderingInformation_;
 		updatedOrderingInformation.append(QString("%1;").arg(newIssue.value("number").toInt()));
-		QList<QVariantMap> updatedIssues = issues_;
-		updatedIssues.append(newIssue);
+		issues_.append(newIssue);
 
-		productBacklogModel_->parseList(updatedOrderingInformation, updatedIssues);
+		productBacklogModel_->parseList(updatedOrderingInformation, issues_);
 		uploadChanges();
 	}
 }
@@ -189,12 +188,12 @@ void LYGithubProductBacklog::onCloseIssueReturned(bool issueClosedSuccessfully, 
 		int closedIssueNumber = closedIssue.value("number").toInt();
 		QString updatedOrderingInformation = orderingInformation_;
 		updatedOrderingInformation.remove(QString("%1;").arg(closedIssueNumber));
-		QList<QVariantMap> updatedIssues = issues_;
-		for(int x = 0; x < updatedIssues.count(); x++)
-			if(updatedIssues.at(x).value("number").toInt() == closedIssueNumber)
-				updatedIssues.removeAt(x);
 
-		productBacklogModel_->parseList(updatedOrderingInformation, updatedIssues);
+		for(int x = 0; x < issues_.count(); x++)
+			if(issues_.at(x).value("number").toInt() == closedIssueNumber)
+				issues_.removeAt(x);
+
+		productBacklogModel_->parseList(updatedOrderingInformation, issues_);
 		uploadChanges();
 	}
 }

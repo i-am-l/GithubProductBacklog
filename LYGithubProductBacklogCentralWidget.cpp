@@ -250,6 +250,7 @@ LYGithubProductBacklogSanityCheckView::LYGithubProductBacklogSanityCheckView(LYP
 	fixClosedIssuesWithChildrenCheckBox_->setChecked(true);
 	closedIssuesWithChildrenLayout->addWidget(fixClosedIssuesWithChildrenCheckBox_);
 	closedIssuesWithChildrenLayout->addWidget(closedIssuesWithChildrenListView_);
+	closedIssuesWithChildrenLayout->addWidget(new QLabel("This is bad, we don't have a automated fix for this right now"));
 	closedIssuesWithChildrenGroupBox->setLayout(closedIssuesWithChildrenLayout);
 
 	connect(fixMissingIssuesCheckBox_, SIGNAL(toggled(bool)), this, SLOT(onCheckBoxToggled()));
@@ -272,8 +273,12 @@ LYGithubProductBacklogSanityCheckView::LYGithubProductBacklogSanityCheckView(LYP
 		masterVL->addWidget(missingIssuesGroupBox);
 	if(sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedFalseOrderedIssueNoChildren))
 		masterVL->addWidget(closedIssuesWithoutChildrenGroupBox);
-	if(sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedFalseOrderedIssueWithChildren))
+	if(sanityCheck.testFlag(LYProductBacklogModel::SanityCheckFailedFalseOrderedIssueWithChildren)){
 		masterVL->addWidget(closedIssuesWithChildrenGroupBox);
+		fixClosedIssuesWithChildrenCheckBox_->setChecked(false);
+		fixClosedIssuesWithChildrenCheckBox_->setEnabled(false);
+		fixButton_->setEnabled(false);
+	}
 	masterVL->addLayout(buttonsHL);
 	setLayout(masterVL);
 }
