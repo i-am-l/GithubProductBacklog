@@ -2,10 +2,10 @@
 
 #include <QStatusBar>
 
-LYGithubProductBacklogMainWindow::LYGithubProductBacklogMainWindow(QWidget *parent)
-	: QMainWindow(parent)
+LYGithubProductBacklogMainWindow::LYGithubProductBacklogMainWindow(const QString &username, const QString &repository, QWidget *parent) :
+	QMainWindow(parent)
 {
-	mainWidget_ = new LYGithubProductBacklogCentralWidget();
+	mainWidget_ = new LYGithubProductBacklogCentralWidget(username, repository);
 
 	setCentralWidget(mainWidget_);
 	connect(mainWidget_, SIGNAL(requestQuit()), this, SLOT(onRequestQuit()));

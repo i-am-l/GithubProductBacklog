@@ -11,7 +11,7 @@ Q_OBJECT
 
 public:
 	/// Constructor makes new main window
-	LYGithubProductBacklogMainWindow(QWidget *parent = 0);
+	LYGithubProductBacklogMainWindow(const QString &username = "i-am-l", const QString &repository = "i-am-l/GithubProductBacklog", QWidget *parent = 0);
 	~LYGithubProductBacklogMainWindow();
 
 protected slots:

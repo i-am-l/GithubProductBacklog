@@ -23,7 +23,7 @@ Q_OBJECT
 
 public:
 	/// Constructor
-	LYGithubProductBacklogCentralWidget(QWidget *parent = 0);
+	LYGithubProductBacklogCentralWidget(const QString &username, const QString &repository, QWidget *parent = 0);
 
 signals:
 	/// Emitted when we decide to quit, received by the main window
@@ -73,7 +73,7 @@ class LYGithubProductBacklogAuthenticationView : public QDialog
 Q_OBJECT
 public:
 	/// Constructor
-	LYGithubProductBacklogAuthenticationView(QWidget *parent = 0);
+	LYGithubProductBacklogAuthenticationView(const QString &username, const QString &repository, QWidget *parent = 0);
 
 public slots:
 	/// Notifies this widget that authentication failed or succeeded

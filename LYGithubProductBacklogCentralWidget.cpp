@@ -5,9 +5,9 @@
 #include <QTimer>
 #include <QMessageBox>
 
-LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(QWidget *parent) :
+LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(const QString &username, const QString &repository, QWidget *parent) :
 	QWidget(parent)
-{
+{	
 	productBacklog_ = new LYGithubProductBacklog();
 
 	treeView_ = new QTreeView();
@@ -50,7 +50,7 @@ LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(QWidget
 	connect(addIssueButton_, SIGNAL(clicked()), this, SLOT(onAddIssueButtonClicked()));
 	connect(closeIssueButton_, SIGNAL(clicked()), this, SLOT(onCloseIssueButtonClicked()));
 
-	authenticationView_ = new LYGithubProductBacklogAuthenticationView();
+	authenticationView_ = new LYGithubProductBacklogAuthenticationView(username, repository);
 	connect(authenticationView_, SIGNAL(submitAuthenticationInformation(QString,QString,QString)), this, SLOT(onSubmitAuthenticationInformationAvailable(QString,QString,QString)));
 	authenticationView_->show();
 	authenticationView_->raise();
@@ -132,15 +132,15 @@ void LYGithubProductBacklogCentralWidget::onSanityCheckReturned(LYProductBacklog
 	}
 }
 
-LYGithubProductBacklogAuthenticationView::LYGithubProductBacklogAuthenticationView(QWidget *parent) :
+LYGithubProductBacklogAuthenticationView::LYGithubProductBacklogAuthenticationView(const QString &username, const QString &repository, QWidget *parent) :
 	QDialog(parent)
 {
 	QFormLayout *fl = new QFormLayout();
 
-	usernameLineEdit_ = new QLineEdit("i-am-l");
+	usernameLineEdit_ = new QLineEdit(username);
 	passwordLineEdit_ = new QLineEdit();
 	passwordLineEdit_->setEchoMode(QLineEdit::Password);
-	repositoryLineEdit_ = new QLineEdit("i-am-l/GithubProductBacklog");
+	repositoryLineEdit_ = new QLineEdit(repository);
 
 	fl->addRow("Username:", usernameLineEdit_);
 	fl->addRow("Password:", passwordLineEdit_);
