@@ -1,5 +1,6 @@
 #include "LYGithubManager.h"
 
+#include <QStringList>
 #include <QDebug>
 
 LYGithubManager::LYGithubManager(QObject *parent) :
@@ -84,7 +85,6 @@ void LYGithubManager::getIssues(LYGithubManager::IssuesFilter filter, LYGithubMa
 		return;
 
 	fullIssuesReply_.clear();
-
 	QNetworkRequest request;
 
 	QString issuesURL = "https://api.github.com/repos/"+repository_+"/issues";
@@ -146,7 +146,6 @@ void LYGithubManager::getIssues(LYGithubManager::IssuesFilter filter, LYGithubMa
 	// The qjson parser freaks out if the string coming back is too big it seems. Tried some testing and it was inconclusive, it managed a QByteArray of 149904 but died after one of 118460.
 	// Keeping this count lower and making sure there aren't ridiculously big comments is the solution right now.
 	issuesOptions.append("per_page=30");
-	qDebug() << "Requesting " << issuesURL+issuesOptions;
 	lastGetIssuesRequest_ = issuesURL+issuesOptions;
 	request.setUrl(QUrl(issuesURL+issuesOptions));
 
@@ -292,7 +291,6 @@ void LYGithubManager::onAuthenicatedRequestReturned(){
 	emit authenticated(authenticated_);
 }
 
-#include <QStringList>
 void LYGithubManager::onIssuesReturned(){
 
 	QList<QByteArray> headerList = getIssuesReply_->rawHeaderList();
@@ -346,9 +344,7 @@ void LYGithubManager::onIssuesReturned(){
 
 		QString currentPageNumberString = QString("&page=%1").arg(currentPageNumber);
 		QString nextPageNumberString = QString("&page=%1").arg(currentPageNumber+1);
-//		qDebug() << "Last request as " << lastGetIssuesRequest_;
 		lastGetIssuesRequest_.replace(currentPageNumberString, nextPageNumberString);
-//		qDebug() << "Request again as " << lastGetIssuesRequest_;
 		request.setUrl(QUrl(lastGetIssuesRequest_));
 
 		QString userInfo = userName_+":"+password_;
@@ -362,7 +358,6 @@ void LYGithubManager::onIssuesReturned(){
 
 	if(doEmit){
 		lastPageNumber_ = -1;
-		//emit issuesReturned(localRetVal);
 		emit issuesReturned(fullIssuesReply_);
 	}
 }

@@ -113,8 +113,11 @@ protected:
 
 	/// Pointer specifically focusing on the get issues network reply.
 	QNetworkReply *getIssuesReply_;
+	/// Holding the last request string for the getIssues() call ... we might need to request more pages
 	QString lastGetIssuesRequest_;
+	/// Holds the last page number for multipage request
 	int lastPageNumber_;
+	/// Holds the long term storage for the getIssues() reply over multiple calls for multiple pages
 	QList<QVariantMap> fullIssuesReply_;
 
 	/// Pointer specifically focusing on the get single issue's comments network reply.
