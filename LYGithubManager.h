@@ -52,7 +52,8 @@ public slots:
 	void getIssues(LYGithubManager::IssuesFilter filter = LYGithubManager::IssuesFilterAssigned,
 			   LYGithubManager::IssuesState state = LYGithubManager::IssuesStateOpen,
 			   LYGithubManager::IssuesSort sort = LYGithubManager::IssuesSortCreated,
-			   LYGithubManager::IssuesDirection direction = LYGithubManager::IssuesDirectionAscending);
+			   LYGithubManager::IssuesDirection direction = LYGithubManager::IssuesDirectionAscending,
+			   int page = 1);
 	/// Does the work to get all of the comments on a single issue (by id) from the connected Github repository.
 	void getSingleIssueComments(int issueNumber);
 	/// Does the work to get a single comment (by id) in the connected Github repository.
@@ -102,6 +103,8 @@ protected:
 	/// Helper method that intializes all of the classes member variables.
 	void initialize();
 
+	int pageNumberFromURLString(const QString &urlString) const;
+
 protected:
 	/// Pointer that handles the network access.
 	QNetworkAccessManager *manager_;
@@ -110,6 +113,10 @@ protected:
 
 	/// Pointer specifically focusing on the get issues network reply.
 	QNetworkReply *getIssuesReply_;
+	QString lastGetIssuesRequest_;
+	int lastPageNumber_;
+	QList<QVariantMap> fullIssuesReply_;
+
 	/// Pointer specifically focusing on the get single issue's comments network reply.
 	QNetworkReply *getSingleIssueCommentsReply_;
 

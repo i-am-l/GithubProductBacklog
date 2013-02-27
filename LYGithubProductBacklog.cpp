@@ -111,8 +111,13 @@ void LYGithubProductBacklog::onPopulateProductBacklogReturned(QList<QVariantMap>
 	emit sanityCheckReturned(sanityCheck);
 }
 
+#include <QDebug>
 void LYGithubProductBacklog::onPopulateProductBacklogOrderingFindIssueReturned(QList<QVariantMap> issues){
 	int issueNumber = -1;
+
+	//for(int x = 0; x < issues.count(); x++)
+	//	printGithubMapRecursive(issues.at(x), 0);
+
 	for(int x = 0; x < issues.count(); x++)
 		if(issues.at(x).value("title").toString() == "ProductBacklogInfo")
 			issueNumber = issues.at(x).value("number").toInt();
@@ -121,11 +126,13 @@ void LYGithubProductBacklog::onPopulateProductBacklogOrderingFindIssueReturned(Q
 	productBacklogModel_->setClosedIssues(closedIssues_);
 
 	if(issueNumber > 0){
+		qDebug() << "Found the magic issue";
 		QVariantList arguments;
 		arguments.append(QVariant(issueNumber));
 		startupConnectionQueue_.first()->setInitiatorArguments(arguments);
 	}
 	else{
+		qDebug() << "Did not find the magic issue";
 		startupConnectionQueue_.stopQueue();
 		startupConnectionQueue_.clearQueue();
 	}

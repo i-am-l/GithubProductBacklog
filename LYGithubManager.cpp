@@ -79,9 +79,12 @@ void LYGithubManager::authenticate(){
 	connect(authenticateReply_, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(onSomeErrorOccured(QNetworkReply::NetworkError)));
 }
 
-void LYGithubManager::getIssues(LYGithubManager::IssuesFilter filter, LYGithubManager::IssuesState state, LYGithubManager::IssuesSort sort, LYGithubManager::IssuesDirection direction){
+void LYGithubManager::getIssues(LYGithubManager::IssuesFilter filter, LYGithubManager::IssuesState state, LYGithubManager::IssuesSort sort, LYGithubManager::IssuesDirection direction, int page){
 	if(!isAuthenticated() || repository_.isEmpty() || getIssuesReply_)
 		return;
+
+	fullIssuesReply_.clear();
+
 	QNetworkRequest request;
 
 	QString issuesURL = "https://api.github.com/repos/"+repository_+"/issues";
@@ -132,12 +135,19 @@ void LYGithubManager::getIssues(LYGithubManager::IssuesFilter filter, LYGithubMa
 	issuesOptions.append("direction=");
 	switch(direction){
 	case LYGithubManager::IssuesDirectionAscending:
-		issuesOptions.append("asc");
+		issuesOptions.append("asc&");
 		break;
 	case LYGithubManager::IssuesDirectionDescending:
-		issuesOptions.append("desc");
+		issuesOptions.append("desc&");
 		break;
 	}
+	issuesOptions.append(QString("page=%1&").arg(page));
+	// Above per_page=45 Qt seems to freak out for some reason.
+	// The qjson parser freaks out if the string coming back is too big it seems. Tried some testing and it was inconclusive, it managed a QByteArray of 149904 but died after one of 118460.
+	// Keeping this count lower and making sure there aren't ridiculously big comments is the solution right now.
+	issuesOptions.append("per_page=30");
+	qDebug() << "Requesting " << issuesURL+issuesOptions;
+	lastGetIssuesRequest_ = issuesURL+issuesOptions;
 	request.setUrl(QUrl(issuesURL+issuesOptions));
 
 	QString userInfo = userName_+":"+password_;
@@ -282,27 +292,79 @@ void LYGithubManager::onAuthenicatedRequestReturned(){
 	emit authenticated(authenticated_);
 }
 
+#include <QStringList>
 void LYGithubManager::onIssuesReturned(){
+
+	QList<QByteArray> headerList = getIssuesReply_->rawHeaderList();
+	for(int x = 0; x < headerList.count(); x++){
+		if(headerList.at(x) == "Link" && lastPageNumber_ == -1){
+			QString linkHeader = getIssuesReply_->rawHeader(headerList.at(x));
+			int lastPageNumber = -1;
+			int nextPageNumber = -1;
+			QStringList linkHeaderItems = linkHeader.split(',');
+			for(int y = 0; y < linkHeaderItems.count(); y++){
+				if(linkHeaderItems.at(y).contains("; rel=\"last\""))
+					lastPageNumber = pageNumberFromURLString(linkHeaderItems.at(y));
+				if(linkHeaderItems.at(y).contains("; rel=\"next\""))
+					nextPageNumber = pageNumberFromURLString(linkHeaderItems.at(y));
+			}
+
+			lastPageNumber_ = lastPageNumber;
+		}
+	}
+
+	int currentPageNumber = -1;
+	if(lastPageNumber_ != -1)
+		currentPageNumber = pageNumberFromURLString(lastGetIssuesRequest_);
+
 	QJson::Parser parser;
 	QVariant githubFullReply = parser.parse(getIssuesReply_->readAll());
 	bool doEmit = false;
-	QList<QVariantMap> retVal;
+	QList<QVariantMap> localRetVal;
 	QVariantMap oneIssue;
 	if(githubFullReply.canConvert(QVariant::List)){
 		QVariantList githubListReply = githubFullReply.toList();
 		if(githubListReply.at(0).canConvert(QVariant::Map)){
-			doEmit = true;
+			if((lastPageNumber_ == -1) || (currentPageNumber == lastPageNumber_) )
+				doEmit = true;
 			for(int x = 0; x < githubListReply.count(); x++){
 				oneIssue = githubListReply.at(x).toMap();
-				retVal.append(oneIssue);
+				localRetVal.append(oneIssue);
 			}
 		}
 	}
+
+	fullIssuesReply_.append(localRetVal);
+
 	disconnect(getIssuesReply_, 0);
 	getIssuesReply_->deleteLater();
 	getIssuesReply_ = 0;
-	if(doEmit)
-		emit issuesReturned(retVal);
+
+	if((lastPageNumber_ != -1) && (currentPageNumber != lastPageNumber_)){
+
+		QNetworkRequest request;
+
+		QString currentPageNumberString = QString("&page=%1").arg(currentPageNumber);
+		QString nextPageNumberString = QString("&page=%1").arg(currentPageNumber+1);
+//		qDebug() << "Last request as " << lastGetIssuesRequest_;
+		lastGetIssuesRequest_.replace(currentPageNumberString, nextPageNumberString);
+//		qDebug() << "Request again as " << lastGetIssuesRequest_;
+		request.setUrl(QUrl(lastGetIssuesRequest_));
+
+		QString userInfo = userName_+":"+password_;
+		QByteArray userData = userInfo.toLocal8Bit().toBase64();
+		QString headerData = "Basic " + userData;
+		request.setRawHeader("Authorization", headerData.toLocal8Bit());
+
+		getIssuesReply_ = manager_->get(request);
+		connect(getIssuesReply_, SIGNAL(readyRead()), this, SLOT(onIssuesReturned()));
+	}
+
+	if(doEmit){
+		lastPageNumber_ = -1;
+		//emit issuesReturned(localRetVal);
+		emit issuesReturned(fullIssuesReply_);
+	}
 }
 
 void LYGithubManager::onSingleIssueCommentsReturned(){
@@ -401,10 +463,21 @@ void LYGithubManager::initialize(){
 	repository_ = "";
 	authenticateReply_ = 0;
 	getIssuesReply_ = 0;
+	lastPageNumber_ = -1;
 	getSingleIssueCommentsReply_ = 0;
 	getSingleCommentReply_ = 0;
 	editSingleCommentReply_ = 0;
 	createNewIssueReply_ = 0;
 	closeIssueReply_ = 0;
 	authenticated_ = false;
+}
+
+int LYGithubManager::pageNumberFromURLString(const QString &urlString) const{
+	QRegExp pageNumberRegExp = QRegExp("page=(\\d+)");
+	pageNumberRegExp.indexIn(urlString);
+	bool conversionOk = false;
+	int retVal = pageNumberRegExp.cap(1).toInt(&conversionOk);
+	if(!conversionOk)
+		retVal = -1;
+	return retVal;
 }
