@@ -1,0 +1,211 @@
+So, found out that multipage requests (requests that might return more than one page of data) can be a little bit of a hassle to work with. There's a working version of getIssues() as of February 27th, 2013. 
+However, there are some related issues that just plain seem to make limitations. The per_page paramater seems to be a sticky point. First off, the github limit is 100, but if you go above 45 or so Qt seems to freak out and throws ASSERT errors. That's annoying, but seems consistent.
+Even worse, sometimes the qjson parser just craps out. Below are some tests I ran. 
+
+(1) First problem seemed to be a parsing error even when the per_page was set as low as 10 on a particular repository. Found out that one of the issues had a huge comment in it with a lot of crazy text. I removed that comment and things worked. Not entirely sure if the comment has bad character combinations or (more likely) reached a size limitation.
+--> Moral of the story: there might be a straightup size limitation for a single comment (json string) that the qjson library can parse.
+
+(2) Testing showed that for a given repository the same parse error was happening at per_page=37 but not at per_page=36. While it's not conclusive, it seems likely that the total size of the QByteArray being passed into the qjson parser can't exceed a certain size (or possibly nested complexity). Some initial testing was inconclusive at to whether it was the size of the QByteArray.
+Requesting  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=1&per_page=30" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=1&per_page=30" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=2&per_page=30" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=2&per_page=30" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=3&per_page=30" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=3&per_page=30" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=4&per_page=30" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=4&per_page=30" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=5&per_page=30" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=5&per_page=30" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=6&per_page=30" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=6&per_page=30" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=7&per_page=30" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=7&per_page=30" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=8&per_page=30" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=8&per_page=30" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=9&per_page=30" 
+Found the magic issue 
+Requesting  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=1&per_page=30" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=1&per_page=30" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=2&per_page=30" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=2&per_page=30" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=3&per_page=30" 
+
+Requesting  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=1&per_page=40" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=1&per_page=40" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=2&per_page=40" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=2&per_page=40" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=3&per_page=40" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=3&per_page=40" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=4&per_page=40" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=4&per_page=40" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=5&per_page=40" 
+json_parser - syntax error found,  forcing abort 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=5&per_page=40" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=6&per_page=40" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=6&per_page=40" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=7&per_page=40" 
+Found the magic issue 
+Requesting  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=1&per_page=40" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=1&per_page=40" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=2&per_page=40" 
+2013-02-27 10:55:48.663 GithubProductBacklog[9763:707] -_continuousScroll is deprecated for NSScrollWheel. Please use -hasPreciseScrollingDeltas.
+2013-02-27 10:55:48.664 GithubProductBacklog[9763:707] -deviceDeltaX is deprecated for NSScrollWheel. Please use -scrollingDeltaX.
+2013-02-27 10:55:48.664 GithubProductBacklog[9763:707] -deviceDeltaY is deprecated for NSScrollWheel. Please use -scrollingDeltaY.
+
+Requesting  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=1&per_page=35" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=1&per_page=35" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=2&per_page=35" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=2&per_page=35" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=3&per_page=35" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=3&per_page=35" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=4&per_page=35" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=4&per_page=35" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=5&per_page=35" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=5&per_page=35" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=6&per_page=35" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=6&per_page=35" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=7&per_page=35" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=7&per_page=35" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=8&per_page=35" 
+Found the magic issue 
+Requesting  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=1&per_page=35" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=1&per_page=35" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=2&per_page=35" 
+
+Requesting  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=1&per_page=37" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=1&per_page=37" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=2&per_page=37" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=2&per_page=37" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=3&per_page=37" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=3&per_page=37" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=4&per_page=37" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=4&per_page=37" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=5&per_page=37" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=5&per_page=37" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=6&per_page=37" 
+json_parser - syntax error found,  forcing abort 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=6&per_page=37" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=7&per_page=37" 
+
+Requesting  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=1&per_page=36" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=1&per_page=36" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=2&per_page=36" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=2&per_page=36" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=3&per_page=36" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=3&per_page=36" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=4&per_page=36" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=4&per_page=36" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=5&per_page=36" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=5&per_page=36" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=6&per_page=36" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=6&per_page=36" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=7&per_page=36" 
+Found the magic issue 
+Requesting  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=1&per_page=36" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=1&per_page=36" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=2&per_page=36"
+
+-----------
+
+Requesting  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=1&per_page=30" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=1&per_page=30" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=2&per_page=30" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=2&per_page=30" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=3&per_page=30" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=3&per_page=30" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=4&per_page=30" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=4&per_page=30" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=5&per_page=30" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=5&per_page=30" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=6&per_page=30" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=6&per_page=30" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=7&per_page=30" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=7&per_page=30" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=8&per_page=30" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=8&per_page=30" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=9&per_page=30" 
+Found the magic issue 
+Requesting  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=1&per_page=30" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=1&per_page=30" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=2&per_page=30" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=2&per_page=30" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=3&per_page=30" 
+
+Requesting  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=1&per_page=40" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=1&per_page=40" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=2&per_page=40" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=2&per_page=40" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=3&per_page=40" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=3&per_page=40" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=4&per_page=40" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=4&per_page=40" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=5&per_page=40" 
+json_parser - syntax error found,  forcing abort 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=5&per_page=40" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=6&per_page=40" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=6&per_page=40" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=7&per_page=40" 
+Found the magic issue 
+Requesting  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=1&per_page=40" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=1&per_page=40" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=2&per_page=40" 
+2013-02-27 10:55:48.663 GithubProductBacklog[9763:707] -_continuousScroll is deprecated for NSScrollWheel. Please use -hasPreciseScrollingDeltas.
+2013-02-27 10:55:48.664 GithubProductBacklog[9763:707] -deviceDeltaX is deprecated for NSScrollWheel. Please use -scrollingDeltaX.
+2013-02-27 10:55:48.664 GithubProductBacklog[9763:707] -deviceDeltaY is deprecated for NSScrollWheel. Please use -scrollingDeltaY.
+
+Requesting  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=1&per_page=35" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=1&per_page=35" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=2&per_page=35" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=2&per_page=35" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=3&per_page=35" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=3&per_page=35" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=4&per_page=35" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=4&per_page=35" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=5&per_page=35" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=5&per_page=35" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=6&per_page=35" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=6&per_page=35" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=7&per_page=35" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=7&per_page=35" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=8&per_page=35" 
+Found the magic issue 
+Requesting  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=1&per_page=35" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=1&per_page=35" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=2&per_page=35" 
+
+Requesting  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=1&per_page=37" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=1&per_page=37" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=2&per_page=37" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=2&per_page=37" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=3&per_page=37" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=3&per_page=37" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=4&per_page=37" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=4&per_page=37" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=5&per_page=37" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=5&per_page=37" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=6&per_page=37" 
+json_parser - syntax error found,  forcing abort 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=6&per_page=37" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=7&per_page=37" 
+
+Requesting  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=1&per_page=36" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=1&per_page=36" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=2&per_page=36" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=2&per_page=36" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=3&per_page=36" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=3&per_page=36" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=4&per_page=36" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=4&per_page=36" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=5&per_page=36" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=5&per_page=36" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=6&per_page=36" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=6&per_page=36" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=closed&sort=created&direction=asc&page=7&per_page=36" 
+Found the magic issue 
+Requesting  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=1&per_page=36" 
+Last request as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=1&per_page=36" 
+Request again as  "https://api.github.com/repos/acquaman/acquaman/issues?filter=all&state=open&sort=created&direction=asc&page=2&per_page=36"
+
+-------------
+
+--> Moral of the story: there might be an inherent size limitation for qjson parser. Right now, all we can do is keep the per_page value small to try to avoid it.
