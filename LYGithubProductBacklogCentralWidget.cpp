@@ -10,6 +10,8 @@ LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(const Q
 {	
 	productBacklog_ = new LYGithubProductBacklog();
 
+	networkBusyView_ = 0;
+
 	treeView_ = new QTreeView();
 	treeView_->setModel(productBacklog_->model());
 	treeView_->setSelectionBehavior(QAbstractItemView::SelectItems);
@@ -45,6 +47,7 @@ LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(const Q
 	connect(productBacklog_, SIGNAL(uploaded(bool)), this, SLOT(onUploaded(bool)));
 
 	connect(productBacklog_, SIGNAL(sanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks)), this, SLOT(onSanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks)));
+	connect(productBacklog_, SIGNAL(networkRequestBusy(bool, QString)), this, SLOT(onNetworkRequestBusy(bool, QString)));
 
 	connect(treeView_, SIGNAL(clicked(QModelIndex)), this, SLOT(onTreeViewIndexClicked(QModelIndex)));
 	connect(addIssueButton_, SIGNAL(clicked()), this, SLOT(onAddIssueButtonClicked()));
@@ -129,6 +132,19 @@ void LYGithubProductBacklogCentralWidget::onSanityCheckReturned(LYProductBacklog
 			emit requestQuit();
 			break;
 		}
+	}
+}
+
+void LYGithubProductBacklogCentralWidget::onNetworkRequestBusy(bool isBusy, const QString &busyText){
+	setEnabled(!isBusy);
+	if(isBusy && !networkBusyView_){
+		networkBusyView_ = new LYGithubProductBacklogNetworkBusyView(busyText);
+		networkBusyView_->show();
+	}
+	else if(!isBusy && networkBusyView_){
+		networkBusyView_->close();
+		networkBusyView_->deleteLater();
+		networkBusyView_ = 0;
 	}
 }
 
@@ -417,4 +433,23 @@ void LYGithubProductBacklogAddIssueView::closeEvent(QCloseEvent *e)
 {
 	e->accept();
 	hideAndFinish();
+}
+
+LYGithubProductBacklogNetworkBusyView::LYGithubProductBacklogNetworkBusyView(const QString &interactionText, QWidget *parent) :
+	QDialog(parent)
+{
+	serverInteractionProgressBar_ = new QProgressBar();
+	serverInteractionProgressBar_->setMinimumWidth(200);
+
+	serverInteractionLabel_ = new QLabel(interactionText);
+
+	QVBoxLayout *vl_ = new QVBoxLayout();
+	vl_->addWidget(serverInteractionProgressBar_);
+	vl_->addWidget(serverInteractionLabel_);
+
+	setLayout(vl_);
+	setWindowModality(Qt::WindowModal);
+
+	serverInteractionProgressBar_->setMinimum(0);
+	serverInteractionProgressBar_->setMaximum(0);
 }

@@ -16,6 +16,7 @@
 class LYGithubProductBacklogAuthenticationView;
 class LYGithubProductBacklogSanityCheckView;
 class LYGithubProductBacklogAddIssueView;
+class LYGithubProductBacklogNetworkBusyView;
 
 class LYGithubProductBacklogCentralWidget : public QWidget
 {
@@ -52,6 +53,8 @@ protected slots:
 	/// Handles opening up the sanity check view if the sanity checks didn't pass on startup
 	void onSanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck);
 
+	void onNetworkRequestBusy(bool isBusy, const QString &busyText);
+
 protected:
 	/// View for the tree model coming from the product backlog
 	QTreeView *treeView_;
@@ -66,6 +69,7 @@ protected:
 	LYGithubProductBacklog *productBacklog_;
 	/// The authentication window pointer
 	LYGithubProductBacklogAuthenticationView *authenticationView_;
+	LYGithubProductBacklogNetworkBusyView *networkBusyView_;
 };
 
 class LYGithubProductBacklogAuthenticationView : public QDialog
@@ -192,6 +196,23 @@ protected:
 	int exitCountDownCounter_;
 
 	bool issueCreatedSuccessfully_;
+};
+
+class LYGithubProductBacklogNetworkBusyView : public QDialog
+{
+Q_OBJECT
+public:
+	/// Constructor
+	LYGithubProductBacklogNetworkBusyView(const QString &interactionText, QWidget *parent = 0);
+
+protected:
+	/// Progress bar to show interaction is happening
+	QProgressBar *serverInteractionProgressBar_;
+	/// Label for interaction progress
+	QLabel *serverInteractionLabel_;
+
+	/// Main vertical layout
+	QVBoxLayout vl_;
 };
 
 #endif // LYGITHUBPRODUCTBACKLOGCENTRALWIDGET_H

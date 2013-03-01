@@ -32,6 +32,7 @@ void LYGithubProductBacklog::fixStartupIssues(){
 }
 
 void LYGithubProductBacklog::uploadChanges(){
+	emit networkRequestBusy(true, "Uploading Changes");
 	createUploadChangesConnectionQueue();
 	QVariantList arguments;
 	arguments.append(QVariant::fromValue(ordingInformationCommentId_));
@@ -41,6 +42,7 @@ void LYGithubProductBacklog::uploadChanges(){
 }
 
 void LYGithubProductBacklog::createNewIssue(const QString &title, const QString &body){
+	emit networkRequestBusy(true, "Creating Issue");
 	createCreateNewIssueConnectionQueue();
 	QVariantList arguments;
 	arguments.append(QVariant::fromValue(title));
@@ -51,6 +53,7 @@ void LYGithubProductBacklog::createNewIssue(const QString &title, const QString 
 }
 
 void LYGithubProductBacklog::closeIssue(int issueNumber){
+	emit networkRequestBusy(true, "Closing Issue");
 	createCloseIssueConnectionQueue();
 	QVariantList arguments;
 	arguments.append(QVariant::fromValue(issueNumber));
@@ -61,20 +64,26 @@ void LYGithubProductBacklog::closeIssue(int issueNumber){
 
 void LYGithubProductBacklog::setUserName(const QString &username){
 	username_ = username;
-	if(authenticateHelper())
+	if(authenticateHelper()){
+		emit networkRequestBusy(true, "Populating Product Backlog");
 		startupConnectionQueue_.startQueue();
+	}
 }
 
 void LYGithubProductBacklog::setPassword(const QString &password){
 	password_ = password;
-	if(authenticateHelper())
+	if(authenticateHelper()){
+		emit networkRequestBusy(true, "Populating Product Backlog");
 		startupConnectionQueue_.startQueue();
+	}
 }
 
 void LYGithubProductBacklog::setRepository(const QString &repository){
 	repository_ = repository;
-	if(authenticateHelper())
+	if(authenticateHelper()){
+		emit networkRequestBusy(true, "Populating Product Backlog");
 		startupConnectionQueue_.startQueue();
+	}
 }
 
 QStringList LYGithubProductBacklog::missingIssues() const{
@@ -109,6 +118,7 @@ void LYGithubProductBacklog::onPopulateProductBacklogReturned(QList<QVariantMap>
 	issues_ = issues;
 	LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck = productBacklogModel_->parseList(orderingInformation_, issues_);
 	emit sanityCheckReturned(sanityCheck);
+	emit networkRequestBusy(false, "");
 }
 
 void LYGithubProductBacklog::onPopulateProductBacklogOrderingFindIssueReturned(QList<QVariantMap> issues){
@@ -161,6 +171,7 @@ void LYGithubProductBacklog::onUploadChangedCheckedOrderingReturn(QVariantMap co
 		uploadChangesConnectionQueue_.clearQueue();
 	}
 	emit uploaded(successfullyUploaded);
+	emit networkRequestBusy(false, "");
 }
 
 void LYGithubProductBacklog::onUploadChangesReturned(QVariantMap comment){
@@ -178,6 +189,7 @@ void LYGithubProductBacklog::onCreateNewIssueReturned(bool issueCreatedSuccessfu
 		issues_.append(newIssue);
 
 		productBacklogModel_->parseList(updatedOrderingInformation, issues_);
+		emit networkRequestBusy(false, "");
 		uploadChanges();
 	}
 }
@@ -195,6 +207,7 @@ void LYGithubProductBacklog::onCloseIssueReturned(bool issueClosedSuccessfully, 
 				issues_.removeAt(x);
 
 		productBacklogModel_->parseList(updatedOrderingInformation, issues_);
+		emit networkRequestBusy(false, "");
 		uploadChanges();
 	}
 }

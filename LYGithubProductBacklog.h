@@ -67,6 +67,8 @@ signals:
 	/// Emitted after startup once the sanity checks have been done. Used to generate the dialog for handling sanity check problems.
 	void sanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck);
 
+	void networkRequestBusy(bool isBusy, const QString &busyText);
+
 protected slots:
 	/// Handles the return of the authentication request
 	void onGitAuthenticated(bool wasAuthenticated);
