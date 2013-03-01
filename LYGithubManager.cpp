@@ -1,7 +1,8 @@
 #include "LYGithubManager.h"
 
 #include <QStringList>
-#include <QDebug>
+
+#include "LYGithubProductBacklogStatusLog.h"
 
 LYGithubManager::LYGithubManager(QObject *parent) :
 	QObject(parent)
@@ -64,6 +65,9 @@ void LYGithubManager::setRepository(const QString &repository){
 void LYGithubManager::authenticate(){
 	if(authenticateReply_)
 		return;
+
+	LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Starting Authentication");
+
 	QNetworkRequest request;
 	QString authenticateURL = "https://api.github.com/user";
 
@@ -83,6 +87,8 @@ void LYGithubManager::authenticate(){
 void LYGithubManager::getIssues(LYGithubManager::IssuesFilter filter, LYGithubManager::IssuesState state, LYGithubManager::IssuesSort sort, LYGithubManager::IssuesDirection direction, int page){
 	if(!isAuthenticated() || repository_.isEmpty() || getIssuesReply_)
 		return;
+
+	LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Starting getIssues request");
 
 	fullIssuesReply_.clear();
 	QNetworkRequest request;
@@ -161,6 +167,9 @@ void LYGithubManager::getIssues(LYGithubManager::IssuesFilter filter, LYGithubMa
 void LYGithubManager::getSingleIssueComments(int issueNumber){
 	if(!isAuthenticated() || repository_.isEmpty() || getSingleIssueCommentsReply_)
 		return;
+
+	LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Starting getSingleIssueComments request");
+
 	QNetworkRequest request;
 
 	QString issuesURL = QString("https://api.github.com/repos/%1/issues/%2/comments").arg(repository_).arg(issueNumber);
@@ -178,6 +187,9 @@ void LYGithubManager::getSingleIssueComments(int issueNumber){
 void LYGithubManager::getSingleComment(int commentId){
 	if(!isAuthenticated() || repository_.isEmpty() || getSingleCommentReply_)
 		return;
+
+	LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Starting getSingleComment request");
+
 	QNetworkRequest request;
 
 	QString commentURL = QString("https://api.github.com/repos/%1/issues/comments/%2").arg(repository_).arg(commentId);
@@ -195,6 +207,9 @@ void LYGithubManager::getSingleComment(int commentId){
 void LYGithubManager::editSingleComment(int commentId, const QString &newComment){
 	if(!isAuthenticated() || repository_.isEmpty() || editSingleCommentReply_)
 		return;
+
+	LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Starting editSingleComment request");
+
 	QNetworkRequest request;
 
 	QString commentURL = QString("https://api.github.com/repos/%1/issues/comments/%2").arg(repository_).arg(commentId);
@@ -222,6 +237,9 @@ void LYGithubManager::editSingleComment(int commentId, const QString &newComment
 void LYGithubManager::createNewIssue(const QString &title, const QString &body, const QString &assignee){
 	if(!isAuthenticated() || repository_.isEmpty() || createNewIssueReply_)
 		return;
+
+	LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Starting createNewIssue request");
+
 	QNetworkRequest request;
 
 	QString issuesURL = "https://api.github.com/repos/"+repository_+"/issues";
@@ -249,6 +267,9 @@ void LYGithubManager::createNewIssue(const QString &title, const QString &body, 
 void LYGithubManager::closeIssue(int issueNumber){
 	if(!isAuthenticated() || repository_.isEmpty() || closeIssueReply_)
 		return;
+
+	LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Starting closeIssue request");
+
 	QNetworkRequest request;
 
 	QString commentURL = QString("https://api.github.com/repos/%1/issues/%2").arg(repository_).arg(issueNumber);
@@ -285,6 +306,9 @@ void LYGithubManager::onAuthenicatedRequestReturned(){
 		else
 			authenticated_ = true;
 	}
+
+	LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage(QString("Received authentication request return as %1").arg(authenticated_));
+
 	disconnect(authenticateReply_, 0);
 	authenticateReply_->deleteLater();
 	authenticateReply_ = 0;
@@ -352,14 +376,21 @@ void LYGithubManager::onIssuesReturned(){
 		QString headerData = "Basic " + userData;
 		request.setRawHeader("Authorization", headerData.toLocal8Bit());
 
+		LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage(QString("Processed page %1 of %2 for getIssues request").arg(currentPageNumber).arg(lastPageNumber_));
+
 		getIssuesReply_ = manager_->get(request);
 		connect(getIssuesReply_, SIGNAL(readyRead()), this, SLOT(onIssuesReturned()));
+		return;
 	}
 
 	if(doEmit){
+		LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Processed final getIssues request");
+
 		lastPageNumber_ = -1;
 		emit issuesReturned(fullIssuesReply_);
+		return;
 	}
+	LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Something went wrong in getIssues request");
 }
 
 void LYGithubManager::onSingleIssueCommentsReturned(){
@@ -377,8 +408,12 @@ void LYGithubManager::onSingleIssueCommentsReturned(){
 	disconnect(getSingleIssueCommentsReply_, 0);
 	getSingleIssueCommentsReply_->deleteLater();
 	getSingleIssueCommentsReply_ = 0;
-	if(doEmit)
+	if(doEmit){
+		LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Processed singleIssueComment request");
 		emit singleIssueCommentReturned(retVal);
+	}
+	else
+		LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Something went wrong with singleIssueComment request");
 }
 
 void LYGithubManager::onGetSingleCommentReturned(){
@@ -393,8 +428,12 @@ void LYGithubManager::onGetSingleCommentReturned(){
 	disconnect(getSingleCommentReply_, 0);
 	getSingleCommentReply_->deleteLater();
 	getSingleCommentReply_ = 0;
-	if(doEmit)
+	if(doEmit){
+		LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Processed getSingleComment request");
 		emit singleCommentReturned(retVal);
+	}
+	else
+		LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Something went wrong with getSingleComment request");
 }
 
 void LYGithubManager::onEditSingleCommentReturned(){
@@ -409,8 +448,12 @@ void LYGithubManager::onEditSingleCommentReturned(){
 	disconnect(editSingleCommentReply_, 0);
 	editSingleCommentReply_->deleteLater();
 	editSingleCommentReply_ = 0;
-	if(doEmit)
+	if(doEmit){
+		LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Processed editSingleComment request");
 		emit singleCommentEdited(retVal);
+	}
+	else
+		LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Something went wrong with editSingleComment request");
 }
 
 void LYGithubManager::onCreateNewIssueReturned(){
@@ -427,6 +470,7 @@ void LYGithubManager::onCreateNewIssueReturned(){
 	disconnect(createNewIssueReply_, 0);
 	createNewIssueReply_->deleteLater();
 	createNewIssueReply_ = 0;
+	LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Processed createNewIssue request");
 	emit issueCreated(retVal, retMap);
 }
 
@@ -444,11 +488,12 @@ void LYGithubManager::onCloseIssueReturned(){
 	disconnect(closeIssueReply_, 0);
 	closeIssueReply_->deleteLater();
 	closeIssueReply_ = 0;
+	LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Processed closeIssue request");
 	emit issueClosed(retVal, retMap);
 }
 
 void LYGithubManager::onSomeErrorOccured(QNetworkReply::NetworkError nError){
-	qDebug() << "Error occurred " << nError;
+	LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage(QString("Some error occurred %1").arg(nError));
 }
 
 void LYGithubManager::initialize(){

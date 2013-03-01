@@ -21,8 +21,17 @@ protected slots:
 	void onRequestStatusBarMessage(const QString &message, int timeout);
 
 protected:
+	/// Reimplements the closeEvent to ask the mainWidget to ensure that its windows have been closed then calls the parent routine
+	void closeEvent(QCloseEvent *);
+
+protected:
 	/// Holds the central widget
 	LYGithubProductBacklogCentralWidget *mainWidget_;
+
+	/// Holds the menuBar pointer
+	QMenuBar *menuBar_;
+	/// Holds the help menu pointer (only action is to launch the status log view)
+	QMenu *helpMenu_;
 };
 
 #endif // LYGITHUBPRODUCTBACKLOGMAINWINDOW_H

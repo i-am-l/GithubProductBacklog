@@ -67,6 +67,7 @@ signals:
 	/// Emitted after startup once the sanity checks have been done. Used to generate the dialog for handling sanity check problems.
 	void sanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck);
 
+	/// Emitted when a network request starts (true) or finishes (false). A message is also passed along to state the nature of the network request.
 	void networkRequestBusy(bool isBusy, const QString &busyText);
 
 protected slots:

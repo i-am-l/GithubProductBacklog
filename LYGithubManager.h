@@ -97,12 +97,14 @@ protected slots:
 	/// Slot handling the reponse when closing an issue
 	void onCloseIssueReturned();
 
+	/// Just adds the error to the status log
 	void onSomeErrorOccured(QNetworkReply::NetworkError nError);
 
 protected:
 	/// Helper method that intializes all of the classes member variables.
 	void initialize();
 
+	/// Helper method to grab page numbers from the url strings that github sends in the link header. Used to find the page= parameter and not the per_page= parameter.
 	int pageNumberFromURLString(const QString &urlString) const;
 
 protected:

@@ -12,6 +12,9 @@ LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(const Q
 
 	networkBusyView_ = 0;
 
+	statusLogView_ = new LYGithubProductBacklogStatusLogView();
+	statusLogView_->hide();
+
 	treeView_ = new QTreeView();
 	treeView_->setModel(productBacklog_->model());
 	treeView_->setSelectionBehavior(QAbstractItemView::SelectItems);
@@ -59,6 +62,25 @@ LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(const Q
 	authenticationView_->raise();
 }
 
+LYGithubProductBacklogCentralWidget::~LYGithubProductBacklogCentralWidget(){
+	if(statusLogView_)
+		delete statusLogView_;
+
+	if(authenticationView_)
+		delete authenticationView_;
+
+	if(networkBusyView_)
+		delete networkBusyView_;
+}
+
+void LYGithubProductBacklogCentralWidget::showStatusLog(){
+	statusLogView_->show();
+}
+
+void LYGithubProductBacklogCentralWidget::ensureReadyForClose(){
+	statusLogView_->hide();
+}
+
 void LYGithubProductBacklogCentralWidget::onSubmitAuthenticationInformationAvailable(const QString &username, const QString &password, const QString &repository){
 	productBacklog_->setUserName(username);
 	productBacklog_->setPassword(password);
@@ -100,6 +122,7 @@ void LYGithubProductBacklogCentralWidget::onAddIssueButtonClicked(){
 	connect(addIssueView, SIGNAL(requestCreateNewIssue(QString,QString)), productBacklog_, SLOT(createNewIssue(QString,QString)));
 	connect(productBacklog_, SIGNAL(newIssueCreated(bool)), addIssueView, SLOT(onGitIssueCreated(bool)));
 	addIssueView->exec();
+	//memory leak here?
 }
 
 void LYGithubProductBacklogCentralWidget::onCloseIssueButtonClicked(){
@@ -452,4 +475,17 @@ LYGithubProductBacklogNetworkBusyView::LYGithubProductBacklogNetworkBusyView(con
 
 	serverInteractionProgressBar_->setMinimum(0);
 	serverInteractionProgressBar_->setMaximum(0);
+}
+
+LYGithubProductBacklogStatusLogView::LYGithubProductBacklogStatusLogView(QWidget *parent) :
+	QWidget(parent)
+{
+	statusLogListView_ = new QListView();
+	statusLogListView_->setModel(LYGithubProductBacklogStatusLog::statusLog()->model());
+	statusLogListView_->setAlternatingRowColors(true);
+	statusLogListView_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+	QVBoxLayout *vl = new QVBoxLayout();
+	vl->addWidget(statusLogListView_);
+	setLayout(vl);
 }

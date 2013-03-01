@@ -6,6 +6,7 @@
 #include <QPushButton>
 
 #include "LYGithubProductBacklog.h"
+#include "LYGithubProductBacklogStatusLog.h"
 
 #include <QDialog>
 #include <QLineEdit>
@@ -17,6 +18,7 @@ class LYGithubProductBacklogAuthenticationView;
 class LYGithubProductBacklogSanityCheckView;
 class LYGithubProductBacklogAddIssueView;
 class LYGithubProductBacklogNetworkBusyView;
+class LYGithubProductBacklogStatusLogView;
 
 class LYGithubProductBacklogCentralWidget : public QWidget
 {
@@ -25,6 +27,14 @@ Q_OBJECT
 public:
 	/// Constructor
 	LYGithubProductBacklogCentralWidget(const QString &username, const QString &repository, QWidget *parent = 0);
+	/// Destructor is responsible for the statusLog, authenticationView, and networkBusyView
+	~LYGithubProductBacklogCentralWidget();
+
+public slots:
+	/// Handles a request to show the status log
+	void showStatusLog();
+	/// Ensures that all windows are closed if the mainWindow is closed
+	void ensureReadyForClose();
 
 signals:
 	/// Emitted when we decide to quit, received by the main window
@@ -46,13 +56,17 @@ protected slots:
 	/// Enables and disables the uploadChangesButton based on whether the list has been modified by the user
 	void onActiveChangesChanged(bool hasActiveChanges);
 
+	/// Handles changing the text on the Close Issue button to the currently selected issue
 	void onTreeViewIndexClicked(const QModelIndex &index);
+	/// Handles launching the Add Issue dialog
 	void onAddIssueButtonClicked();
+	/// Handles the request for actually closing an issue
 	void onCloseIssueButtonClicked();
 
 	/// Handles opening up the sanity check view if the sanity checks didn't pass on startup
 	void onSanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck);
 
+	/// Handles displaying the networkBusyView when the product backlog says a network request is in process
 	void onNetworkRequestBusy(bool isBusy, const QString &busyText);
 
 protected:
@@ -69,7 +83,10 @@ protected:
 	LYGithubProductBacklog *productBacklog_;
 	/// The authentication window pointer
 	LYGithubProductBacklogAuthenticationView *authenticationView_;
+	/// The network busy window pointer
 	LYGithubProductBacklogNetworkBusyView *networkBusyView_;
+	/// The status log window pointer
+	LYGithubProductBacklogStatusLogView *statusLogView_;
 };
 
 class LYGithubProductBacklogAuthenticationView : public QDialog
@@ -213,6 +230,18 @@ protected:
 
 	/// Main vertical layout
 	QVBoxLayout vl_;
+};
+
+class LYGithubProductBacklogStatusLogView : public QWidget
+{
+Q_OBJECT
+public:
+	/// Constructor
+	LYGithubProductBacklogStatusLogView(QWidget *parent = 0);
+
+protected:
+	/// Holds the list view to show the status log StringList model
+	QListView *statusLogListView_;
 };
 
 #endif // LYGITHUBPRODUCTBACKLOGCENTRALWIDGET_H
