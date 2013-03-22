@@ -7,7 +7,7 @@
 
 LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(const QString &username, const QString &repository, QWidget *parent) :
 	QWidget(parent)
-{	
+{
 	productBacklog_ = new LYGithubProductBacklog();
 
 	networkBusyView_ = 0;
@@ -19,10 +19,14 @@ LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(const Q
 	treeView_->setModel(productBacklog_->model());
 	treeView_->setSelectionBehavior(QAbstractItemView::SelectItems);
 	treeView_->setSelectionMode(QAbstractItemView::SingleSelection);
+	treeView_->setAttribute(Qt::WA_MacShowFocusRect, false);
 	treeView_->setDragEnabled(true);
 	treeView_->viewport()->setAcceptDrops(true);
 	treeView_->setDropIndicatorShown(true);
 	treeView_->setDragDropMode(QTreeView::InternalMove);
+	treeView_->setContextMenuPolicy(Qt::CustomContextMenu);
+
+	connect(treeView_, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(onCustomContextMenuRequested(QPoint)));
 
 	uploadChangesButton_ = new QPushButton("Upload Changes");
 	uploadChangesButton_->setEnabled(false);
@@ -48,6 +52,9 @@ LYGithubProductBacklogCentralWidget::LYGithubProductBacklogCentralWidget(const Q
 	connect(uploadChangesButton_, SIGNAL(clicked()), this, SLOT(onUploadChangesButtonClicked()));
 	connect(productBacklog_, SIGNAL(authenticated(bool)), this, SLOT(onAuthenticated(bool)));
 	connect(productBacklog_, SIGNAL(uploaded(bool)), this, SLOT(onUploaded(bool)));
+
+	connect(productBacklog_->productBacklogModel(), SIGNAL(modelAboutToBeRefreshed()), this, SLOT(onModelAboutToBeRefreshed()));
+	connect(productBacklog_->productBacklogModel(), SIGNAL(modelRefreshed()), this, SLOT(onModelRefreshed()));
 
 	connect(productBacklog_, SIGNAL(sanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks)), this, SLOT(onSanityCheckReturned(LYProductBacklogModel::ProductBacklogSanityChecks)));
 	connect(productBacklog_, SIGNAL(networkRequestBusy(bool, QString)), this, SLOT(onNetworkRequestBusy(bool, QString)));
@@ -169,6 +176,47 @@ void LYGithubProductBacklogCentralWidget::onNetworkRequestBusy(bool isBusy, cons
 		networkBusyView_->deleteLater();
 		networkBusyView_ = 0;
 	}
+}
+
+#include <QMenu>
+void LYGithubProductBacklogCentralWidget::onCustomContextMenuRequested(const QPoint &point){
+	QMenu *menu = new QMenu;
+	QModelIndex index = treeView_->currentIndex();
+
+	if(productBacklog_->productBacklogModel()->productBacklogItem(index)->isSelected())
+		menu->addAction("Set Not Selected", this, SLOT(onCustomContextMenuRequestToggle()));
+	else
+		menu->addAction("Set Selected", this, SLOT(onCustomContextMenuRequestToggle()));
+
+	menu->exec(QCursor::pos());
+}
+
+void LYGithubProductBacklogCentralWidget::onCustomContextMenuRequestToggle(){
+	QModelIndex index = treeView_->currentIndex();
+
+	productBacklog_->productBacklogModel()->toggleIsSelectedOnIndex(index);
+}
+
+void LYGithubProductBacklogCentralWidget::onModelAboutToBeRefreshed(){
+	expandedIndexList_ = expandedIndices();
+}
+
+void LYGithubProductBacklogCentralWidget::onModelRefreshed(){
+	for(int x = 0; x < expandedIndexList_.count(); x++)
+		treeView_->setExpanded(expandedIndexList_.at(x), true);
+}
+
+QModelIndexList LYGithubProductBacklogCentralWidget::expandedIndices(const QModelIndex parent){
+	QModelIndexList retVal;
+
+	for(int x = 0; x < productBacklog_->model()->rowCount(parent); x++){
+		if(treeView_->isExpanded(productBacklog_->model()->index(x, 0, parent))){
+			retVal.append(productBacklog_->model()->index(x, 0, parent));
+			retVal.append(expandedIndices(productBacklog_->model()->index(x, 0, parent)));
+		}
+	}
+
+	return retVal;
 }
 
 LYGithubProductBacklogAuthenticationView::LYGithubProductBacklogAuthenticationView(const QString &username, const QString &repository, QWidget *parent) :

@@ -49,6 +49,10 @@ HEADERS  += LYGithubProductBacklogMainWindow.h \
     LYConnectionQueue.h \
     LYGithubProductBacklogStatusLog.h
 
+RESOURCES += \
+    icons.qrc
+
+
 
 
 

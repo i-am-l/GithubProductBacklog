@@ -69,6 +69,15 @@ protected slots:
 	/// Handles displaying the networkBusyView when the product backlog says a network request is in process
 	void onNetworkRequestBusy(bool isBusy, const QString &busyText);
 
+	void onCustomContextMenuRequested(const QPoint &point);
+	void onCustomContextMenuRequestToggle();
+
+	void onModelAboutToBeRefreshed();
+	void onModelRefreshed();
+
+protected:
+	QModelIndexList expandedIndices(const QModelIndex parent = QModelIndex());
+
 protected:
 	/// View for the tree model coming from the product backlog
 	QTreeView *treeView_;
@@ -87,6 +96,8 @@ protected:
 	LYGithubProductBacklogNetworkBusyView *networkBusyView_;
 	/// The status log window pointer
 	LYGithubProductBacklogStatusLogView *statusLogView_;
+
+	QModelIndexList expandedIndexList_;
 };
 
 class LYGithubProductBacklogAuthenticationView : public QDialog

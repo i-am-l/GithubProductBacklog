@@ -2,6 +2,7 @@
 #define LYPRODUCTBACKLOGMODEL_H
 
 #include <QAbstractItemModel>
+#include <QBrush>
 
 class LYProductBacklogItem;
 
@@ -73,6 +74,9 @@ public:
 	/// Returns a title from an issue number (for both open and closed issues)
 	QString titleFromIssueNumber(int issueNumber) const;
 
+public slots:
+	void toggleIsSelectedOnIndex(const QModelIndex &index);
+
 protected:
 	/// Returns a mapping from issue number to parent issue number (if no parent, then -1)
 	QMap<int, int> parseListNotation(const QString &orderingInformation) const;
@@ -108,6 +112,8 @@ protected:
 	/// A mapping of all issues (opened or closed) from issue number to issue title
 	QMap<int, QString> allIssuesToTitle_;
 
+	QMap<QString, QBrush> assigneeToBrush_;
+
 	/// List of issue numbers of closed (or non-existant) issues that are in the product backlog without children
 	QList<int> orderedIssuesWithoutChildrenNotFound_;
 	/// List of issue numbers of closed (or non-existant) issues that are in the product backlog with children
@@ -121,7 +127,7 @@ Q_DECLARE_OPERATORS_FOR_FLAGS(LYProductBacklogModel::ProductBacklogSanityChecks)
 class LYProductBacklogItem {
 public:
 	/// Constructor take issue title, issue number, and parent's issue number
-	LYProductBacklogItem(const QString &issueTitle, int issueNumber, int parentIssueNumber = -1);
+	LYProductBacklogItem(const QString &issueTitle, int issueNumber, int parentIssueNumber = -1, const QString &assignee = "", bool isSelected = false);
 
 	/// Returns the issue title
 	QString issueTitle() const;
@@ -129,17 +135,27 @@ public:
 	int issueNumber() const;
 	/// Returns the parent's issue number (-1 if no parent)
 	int parentIssueNumber() const;
+	/// Returns the assignee name
+	QString assignee() const;
+	/// Returns the selected state
+	bool isSelected() const;
 
 	/// Sets the parent's issue number (-1 if no parent)
 	void setParentIssueNumber(int parentIssueNumber);
+	/// Sets the selected state for the issue
+	void setSelected(bool isSelected);
 
 protected:
 	/// Holds the issue title
 	QString issueTitle_;
 	/// Holds the issue number
 	int issueNumber_;
+	/// Holds the assignee name
+	QString assignee_;
 	/// Holds the parent's issue number (-1 if no parent)
 	int parentIssueNumber_;
+	/// Holds whether or not this issue is selected for the current burst
+	bool selected_;
 };
 
 #include <QMimeData>

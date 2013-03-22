@@ -1,8 +1,27 @@
 #include "LYProductBacklogModel.h"
 
+#include <QFile>
+#include <QTextStream>
+
+#include "LYGithubProductBacklogStatusLog.h"
+
 LYProductBacklogModel::LYProductBacklogModel(QObject *parent) :
 	QAbstractItemModel(parent)
 {
+	QFile assigneeColorFile("assigneeColors.txt");
+	if (!assigneeColorFile.open(QIODevice::ReadOnly | QIODevice::Text))
+		LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("No assignee-color file found");
+	else{
+		QTextStream assigneeColorStream(&assigneeColorFile);
+		while (!assigneeColorStream.atEnd()) {
+			//QString line = assigneeColorStream.readLine();
+			QString assigneeName;
+			int rArg, gArg, bArg, aArg;
+			assigneeColorStream >> assigneeName >> rArg >> gArg >> bArg >> aArg;
+			QBrush assigneeBrush(QColor(rArg, gArg, bArg, aArg));
+			assigneeToBrush_.insert(assigneeName, assigneeBrush);
+		}
+	}
 }
 
 QModelIndex LYProductBacklogModel::index(int row, int column, const QModelIndex &parent) const{
@@ -90,6 +109,8 @@ int LYProductBacklogModel::columnCount(const QModelIndex &parent) const
 		return 0;
 }
 
+#include <QLinearGradient>
+#include <QIcon>
 QVariant LYProductBacklogModel::data(const QModelIndex &index, int role) const
 {
 	LYProductBacklogItem *item = productBacklogItem(index);
@@ -101,6 +122,21 @@ QVariant LYProductBacklogModel::data(const QModelIndex &index, int role) const
 		switch(index.column()) {
 		case 0: return item->issueTitle();
 		}
+	}
+	if(role == Qt::BackgroundRole) {
+		if(item->assignee().isEmpty()){
+			QLinearGradient gradient(0, 0, 1000, 0);
+			gradient.setColorAt(0, QColor::fromRgbF(0.5, 0, 0, 0.25));
+			gradient.setColorAt(1, QColor::fromRgbF(1, 0, 0, 1));
+			return QBrush(gradient);
+		}
+		else if(assigneeToBrush_.contains(item->assignee())){
+			return assigneeToBrush_.value(item->assignee());
+		}
+	}
+	if(role == Qt::DecorationRole) {
+		if(item->isSelected())
+			return QIcon(":Icons/greencheckmark.png");
 	}
 
 	return QVariant();
@@ -250,8 +286,8 @@ bool LYProductBacklogModel::dropMimeData(const QMimeData *data, Qt::DropAction a
 			}
 
 			// Begin actually changing things
-			emit beginResetModel();
 			emit modelAboutToBeRefreshed();
+			emit beginResetModel();
 
 			// Remove us and our children from the flat list
 			for(int x = 0; x < listToMove.count(); x++)
@@ -352,13 +388,26 @@ QString LYProductBacklogModel::titleFromIssueNumber(int issueNumber) const{
 	return "??";
 }
 
+void LYProductBacklogModel::toggleIsSelectedOnIndex(const QModelIndex &index){
+	// Begin actually changing things
+	emit beginResetModel();
+	emit modelAboutToBeRefreshed();
+
+	LYProductBacklogItem *localItem = productBacklogItem(index);
+	localItem->setSelected(!localItem->isSelected());
+
+	// Finished actually changing things
+	emit endResetModel();
+	emit modelRefreshed();
+}
+
 QMap<int, int> LYProductBacklogModel::parseListNotation(const QString &orderingInformation) const{
 	QMap<int, int> issueNumberToParentIssueNumber;
 	QList<int> parentStack;
 	parentStack.push_front(-1);
 	int currentIssueNumber;
 	for(int x = 0; x < orderingInformation.count(); x++){
-		if( (orderingInformation.at(x) == '{') || (orderingInformation.at(x) == '}') ){
+		if( (orderingInformation.at(x) == '{') || (orderingInformation.at(x) == '}') || (orderingInformation.at(x) == 'x') ){
 			//do nothing
 		}
 		else if(orderingInformation.at(x) == ';'){
@@ -389,6 +438,8 @@ QList<int> LYProductBacklogModel::childrenOf(LYProductBacklogItem *pbItem) const
 QString LYProductBacklogModel::recursiveGenerateNotation(LYProductBacklogItem *pbItem) const{
 	QString retVal;
 	retVal.append(QString("%1").arg(pbItem->issueNumber()));
+	if(pbItem->isSelected())
+		retVal.append("x");
 	QModelIndex myIndex = indexForProductBacklogItem(pbItem);
 	if(hasChildren(myIndex))
 		retVal.append("{");
@@ -402,6 +453,7 @@ QString LYProductBacklogModel::recursiveGenerateNotation(LYProductBacklogItem *p
 
 QStringList LYProductBacklogModel::internalParseToFlatList(const QString &orderingInformation) const{
 	QString partialOrderingParse = orderingInformation;
+	partialOrderingParse.replace('x', "");
 	partialOrderingParse.replace('{', ';');
 	partialOrderingParse.replace("};", "");
 	QStringList retVal = partialOrderingParse.split(";", QString::SkipEmptyParts);
@@ -456,6 +508,7 @@ LYProductBacklogModel::ProductBacklogSanityChecks LYProductBacklogModel::interna
 	return sanityCheck;
 }
 
+#include <QDebug>
 bool LYProductBacklogModel::internalParseListWithOptions(const QString &orderingInformation, QList<QVariantMap> issues, bool appendMissingIssues, bool removeClosedIssuesWithoutChildren){
 	LYProductBacklogModel::ProductBacklogSanityChecks sanityCheck = internalDoSanityChecks(orderingInformation, issues);
 
@@ -489,8 +542,31 @@ bool LYProductBacklogModel::internalParseListWithOptions(const QString &ordering
 	LYProductBacklogItem *newIssueItem;
 	QMap<int, LYProductBacklogItem*> newAllIssues;
 	for(int x = 0; x < issues.count(); x++){
-		newIssueItem = new LYProductBacklogItem(issues.at(x).value("number").toString() + " - " + issues.at(x).value("title").toString(), issues.at(x).value("number").toInt(), issueNumberToParentIssueNumber.value(issues.at(x).value("number").toInt()));
+		QString assigneeString;
+		if(issues.at(x).contains("assignee")){
+			QVariantMap assignee = issues.at(x).value("assignee").toMap();
+			if(!assignee.value("login").isNull())
+				assigneeString = assignee.value("login").toString();
+			else
+				assigneeString = "";
+		}
+		newIssueItem = new LYProductBacklogItem(issues.at(x).value("number").toString() + " - " + issues.at(x).value("title").toString(), issues.at(x).value("number").toInt(), issueNumberToParentIssueNumber.value(issues.at(x).value("number").toInt()), assigneeString);
 		newAllIssues.insert(newIssueItem->issueNumber(), newIssueItem);
+	}
+
+	QRegExp findSelectedIssues = QRegExp("(\\d+x)");
+	QString localSeletectedInformation = orderingInformation;
+	QString oneSelectedIssue;
+	int oneSelectedIssueNumber;
+	int pos = 0;
+
+	while ((pos = findSelectedIssues.indexIn(localSeletectedInformation, pos)) != -1) {
+		oneSelectedIssue = findSelectedIssues.cap(1);
+		pos += findSelectedIssues.matchedLength();
+
+		oneSelectedIssueNumber = oneSelectedIssue.remove('x').toInt();
+		if(newAllIssues.value(oneSelectedIssueNumber))
+			newAllIssues.value(oneSelectedIssueNumber)->setSelected(true);
 	}
 
 	setInternalData(newAllIssues, newOrderingInformation);
@@ -498,11 +574,13 @@ bool LYProductBacklogModel::internalParseListWithOptions(const QString &ordering
 	return true;
 }
 
-LYProductBacklogItem::LYProductBacklogItem(const QString &issueTitle, int issueNumber, int parentIssueNumber)
+LYProductBacklogItem::LYProductBacklogItem(const QString &issueTitle, int issueNumber, int parentIssueNumber, const QString &assignee, bool selected)
 {
 	issueTitle_ = issueTitle;
 	issueNumber_ = issueNumber;
 	parentIssueNumber_ = parentIssueNumber;
+	assignee_ = assignee;
+	selected_ = selected;
 }
 
 QString LYProductBacklogItem::issueTitle() const{
@@ -517,6 +595,18 @@ int LYProductBacklogItem::parentIssueNumber() const{
 	return parentIssueNumber_;
 }
 
+QString LYProductBacklogItem::assignee() const{
+	return assignee_;
+}
+
+bool LYProductBacklogItem::isSelected() const{
+	return selected_;
+}
+
 void LYProductBacklogItem::setParentIssueNumber(int parentIssueNumber){
 	parentIssueNumber_ = parentIssueNumber;
+}
+
+void LYProductBacklogItem::setSelected(bool selected){
+	selected_ = selected;
 }
