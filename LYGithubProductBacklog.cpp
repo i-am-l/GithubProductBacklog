@@ -152,9 +152,9 @@ void LYGithubProductBacklog::onPopulateProductBacklogOrderingDirectOrderingComme
 void LYGithubProductBacklog::onUploadChangedCheckedOrderingReturn(QVariantMap fileContents){
 	QString currentRepositorySHA = fileContents.value("sha").toString();
 
-	bool successfullyUploaded = false;
+	bool canAttemptUpload = false;
 	if(currentRepositorySHA == orderingInformationSHA_){
-		successfullyUploaded = true;
+		canAttemptUpload = true;
 
 		QString newOrderingInformation = productBacklogModel_->generateListNotation();
 		QVariantList arguments;
@@ -167,8 +167,8 @@ void LYGithubProductBacklog::onUploadChangedCheckedOrderingReturn(QVariantMap fi
 	else{
 		uploadChangesConnectionQueue_.stopQueue();
 		uploadChangesConnectionQueue_.clearQueue();
+		emit uploaded(false);
 	}
-	emit uploaded(successfullyUploaded);
 	emit networkRequestBusy(false, "");
 }
 
@@ -176,9 +176,10 @@ void LYGithubProductBacklog::onUploadChangesReturned(bool updated, QVariantMap f
 	if(updated){
 		orderingInformation_ = productBacklogModel_->generateListNotation();
 		orderingInformationSHA_ = fileContents.value("content").toMap().value("sha").toString();
-		activeChanges_ = false;
-		emit activeChanges(false);
 	}
+	activeChanges_ = false;
+	emit activeChanges(false);
+	emit uploaded(updated);
 }
 
 void LYGithubProductBacklog::onCreateNewIssueReturned(bool issueCreatedSuccessfully, QVariantMap newIssue){
