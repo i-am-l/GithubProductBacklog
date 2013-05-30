@@ -180,6 +180,7 @@ void LYGithubProductBacklogCentralWidget::onNetworkRequestBusy(bool isBusy, cons
 
 #include <QMenu>
 void LYGithubProductBacklogCentralWidget::onCustomContextMenuRequested(const QPoint &point){
+	Q_UNUSED(point)
 	QMenu *menu = new QMenu;
 	QModelIndex index = treeView_->currentIndex();
 

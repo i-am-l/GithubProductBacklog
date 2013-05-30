@@ -18,7 +18,8 @@ LYGithubProductBacklogMainWindow::LYGithubProductBacklogMainWindow(const QString
 #ifdef Q_WS_MAC
 	menuBar_ = new QMenuBar(0);
 #else
-
+	menuBar_ = new QMenuBar();
+	setMenuBar(menuBar_);
 #endif
 	helpMenu_ = menuBar_->addMenu("Help");
 	helpMenu_->addAction(statugLogViewAction);

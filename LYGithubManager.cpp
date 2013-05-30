@@ -4,8 +4,6 @@
 
 #include "LYGithubProductBacklogStatusLog.h"
 
-#include <QDebug>
-
 LYGithubManager::LYGithubManager(QObject *parent) :
 	QObject(parent)
 {
@@ -226,10 +224,6 @@ void LYGithubManager::editSingleComment(int commentId, const QString &newComment
 	jdata["body"] = newComment;
 	QJson::Serializer jserializer;
 	QByteArray jsonData = jserializer.serialize(jdata);
-
-	qDebug() << "jdata: " << jdata;
-	qDebug() << "commentURL: " << commentURL;
-	qDebug() << "\n\n\n";
 
 	QBuffer *buffer = new QBuffer;
 	buffer->setData(jsonData);
@@ -523,8 +517,6 @@ void LYGithubManager::onEditSingleCommentReturned(){
 	if(githubFullReply.canConvert(QVariant::Map)){
 		doEmit = true;
 		retVal = githubFullReply.toMap();
-
-		qDebug() << "retVal: " << retVal;
 	}
 	disconnect(editSingleCommentReply_, 0);
 	editSingleCommentReply_->deleteLater();
@@ -587,9 +579,6 @@ void LYGithubManager::onGetBlobReturned(){
 	getBlobReply_ = 0;
 	if(doEmit){
 		LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Processed getBlob request");
-		QString rawReplyContent = retVal.value("content").toString();
-		QString decodedReplyContect = QByteArray::fromBase64(rawReplyContent.toLocal8Bit());
-		qDebug() << "Blob is " << rawReplyContent << "\n\n" << decodedReplyContect;
 		emit blobReturned(retVal);
 	}
 	else
@@ -621,7 +610,6 @@ void LYGithubManager::onUpdateFileContentsReturned(){
 	QJson::Parser parser;
 	bool retVal = false;
 	QVariantMap retMap;
-	qDebug() << "UpdateFileContents reply header: " << updateFileContentsReply_->rawHeader("Status");
 	if(updateFileContentsReply_->rawHeader("Status") == "200 OK")
 		retVal = true;
 

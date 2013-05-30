@@ -34,11 +34,6 @@ void LYGithubProductBacklog::fixStartupIssues(){
 void LYGithubProductBacklog::uploadChanges(){
 	emit networkRequestBusy(true, "Uploading Changes");
 	createUploadChangesConnectionQueue();
-	/*
-	QVariantList arguments;
-	arguments.append(QVariant::fromValue(ordingInformationCommentId_));
-	uploadChangesConnectionQueue_.first()->setInitiatorArguments(arguments);
-	*/
 
 	uploadChangesConnectionQueue_.startQueue();
 }
@@ -123,19 +118,14 @@ void LYGithubProductBacklog::onPopulateProductBacklogReturned(QList<QVariantMap>
 	emit networkRequestBusy(false, "");
 }
 
-#include <QDebug>
 void LYGithubProductBacklog::onPopulateProductBacklogGetFileContentsReturned(QVariantMap fileContents){
 	QString rawFileContents = fileContents.value("content").toString();
 	QString decodedFileContents = QByteArray::fromBase64(rawFileContents.toLocal8Bit());
-	qDebug() << "The file contents are: " << decodedFileContents;
 
 	QString fileSHA = fileContents.value("sha").toString();
-	qDebug() << "The file's SHA is " << fileSHA;
 
 	orderingInformation_ = decodedFileContents.remove("\n");
 	orderingInformationSHA_ = fileSHA;
-	qDebug() << "OrderingInformation_ is " << orderingInformation_;
-	qDebug() << "OrderingInformationSHA_ is " << orderingInformationSHA_;
 }
 
 void LYGithubProductBacklog::onPopulateProductBacklogOrderingFindIssueReturned(QList<QVariantMap> issues){
@@ -147,23 +137,9 @@ void LYGithubProductBacklog::onPopulateProductBacklogOrderingFindIssueReturned(Q
 
 	closedIssues_ = issues;
 	productBacklogModel_->setClosedIssues(closedIssues_);
-
-	/*
-	if(issueNumber > 0){
-		QVariantList arguments;
-		arguments.append(QVariant(issueNumber));
-		startupConnectionQueue_.first()->setInitiatorArguments(arguments);
-	}
-	else{
-		startupConnectionQueue_.stopQueue();
-		startupConnectionQueue_.clearQueue();
-	}
-	*/
 }
 
 void LYGithubProductBacklog::onPopulateProductBacklogOrderingInfoIssueCommentsReturned(QVariantMap comments){
-	//orderingInformation_ = comments.value("body").toString();
-	//qDebug() << "OrderingInformation_ is " << orderingInformation_;
 	ordingInformationCommentId_ = comments.value("id").toInt();
 
 	emit productBacklogOrderingReturned(comments);
@@ -173,28 +149,8 @@ void LYGithubProductBacklog::onPopulateProductBacklogOrderingDirectOrderingComme
 	emit productBacklogOrderingReturned(comment);
 }
 
-void LYGithubProductBacklog::onUploadChangedCheckedOrderingReturn(QVariantMap comment){
-	/*
-	QString repositoryCurrentOrdering = comment.value("body").toString();
-
-	bool successfullyUploaded = false;
-	if(repositoryCurrentOrdering == orderingInformation_){
-		successfullyUploaded = true;
-
-		QString newOrderingInformation = productBacklogModel_->generateListNotation();
-		QVariantList arguments;
-		arguments.append(QVariant::fromValue(ordingInformationCommentId_));
-		arguments.append(QVariant::fromValue(newOrderingInformation));
-		uploadChangesConnectionQueue_.first()->setInitiatorArguments(arguments);
-	}
-	else{
-		uploadChangesConnectionQueue_.stopQueue();
-		uploadChangesConnectionQueue_.clearQueue();
-	}
-	emit uploaded(successfullyUploaded);
-	emit networkRequestBusy(false, "");
-	*/
-	QString currentRepositorySHA = comment.value("sha").toString();
+void LYGithubProductBacklog::onUploadChangedCheckedOrderingReturn(QVariantMap fileContents){
+	QString currentRepositorySHA = fileContents.value("sha").toString();
 
 	bool successfullyUploaded = false;
 	if(currentRepositorySHA == orderingInformationSHA_){
@@ -216,10 +172,10 @@ void LYGithubProductBacklog::onUploadChangedCheckedOrderingReturn(QVariantMap co
 	emit networkRequestBusy(false, "");
 }
 
-void LYGithubProductBacklog::onUploadChangesReturned(bool updated, QVariantMap comment){
+void LYGithubProductBacklog::onUploadChangesReturned(bool updated, QVariantMap fileContents){
 	if(updated){
 		orderingInformation_ = productBacklogModel_->generateListNotation();
-		orderingInformationSHA_ = comment.value("content").toMap().value("sha").toString();
+		orderingInformationSHA_ = fileContents.value("content").toMap().value("sha").toString();
 		activeChanges_ = false;
 		emit activeChanges(false);
 	}
@@ -322,14 +278,6 @@ void LYGithubProductBacklog::createStartupConnectionQueue(){
 	connectionQueueObject->setInitiatorObject(githubManager_, SLOT(getIssues()), arguments1);
 	startupConnectionQueue_.pushBackConnectionQueueObject(connectionQueueObject);
 
-	/*
-	connectionQueueObject = new LYConnectionQueueObject(this);
-	connectionQueueObject->setSender(githubManager_, SIGNAL(singleIssueCommentReturned(QVariantMap)));
-	connectionQueueObject->setReceiver(this, SLOT(onPopulateProductBacklogOrderingInfoIssueCommentsReturned(QVariantMap)));
-	connectionQueueObject->setInitiatorObject(githubManager_, SLOT(getSingleIssueComments(int)));
-	startupConnectionQueue_.pushBackConnectionQueueObject(connectionQueueObject);
-	*/
-
 	// Get ordering information and its file SHA
 	connectionQueueObject = new LYConnectionQueueObject(this);
 	connectionQueueObject->setSender(githubManager_, SIGNAL(fileContentsReturned(QVariantMap)));
@@ -352,13 +300,6 @@ void LYGithubProductBacklog::createStartupConnectionQueue(){
 void LYGithubProductBacklog::createUploadChangesConnectionQueue(){
 	uploadChangesConnectionQueue_.clearQueue();
 
-	/*
-	LYConnectionQueueObject *connectionQueueObject = new LYConnectionQueueObject(this);
-	connectionQueueObject->setSender(githubManager_, SIGNAL(singleCommentReturned(QVariantMap)));
-	connectionQueueObject->setReceiver(this, SLOT(onUploadChangedCheckedOrderingReturn(QVariantMap)));
-	connectionQueueObject->setInitiatorObject(githubManager_, SLOT(getSingleComment(int)));
-	uploadChangesConnectionQueue_.pushBackConnectionQueueObject(connectionQueueObject);
-	*/
 	// Check if the product backlog information has changed since we last got it
 	LYConnectionQueueObject *connectionQueueObject = new LYConnectionQueueObject(this);
 	connectionQueueObject->setSender(githubManager_, SIGNAL(fileContentsReturned(QVariantMap)));
@@ -368,13 +309,6 @@ void LYGithubProductBacklog::createUploadChangesConnectionQueue(){
 	connectionQueueObject->setInitiatorObject(githubManager_, SLOT(getFileContents(QString)), arguments);
 	uploadChangesConnectionQueue_.pushBackConnectionQueueObject(connectionQueueObject);
 
-	/*
-	connectionQueueObject = new LYConnectionQueueObject(this);
-	connectionQueueObject->setSender(githubManager_, SIGNAL(singleCommentEdited(QVariantMap)));
-	connectionQueueObject->setReceiver(this, SLOT(onUploadChangesReturned(QVariantMap)));
-	connectionQueueObject->setInitiatorObject(githubManager_, SLOT(editSingleComment(int,QString)));
-	uploadChangesConnectionQueue_.pushBackConnectionQueueObject(connectionQueueObject);
-	*/
 	// Update the product backlog file
 	connectionQueueObject = new LYConnectionQueueObject(this);
 	connectionQueueObject->setSender(githubManager_, SIGNAL(fileContentsUpdated(bool,QVariantMap)));

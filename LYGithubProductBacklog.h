@@ -88,9 +88,9 @@ protected slots:
 	void onPopulateProductBacklogOrderingDirectOrderingCommentReturned(QVariantMap comment);
 
 	/// Handles checking for server side changes that may have taken place and if none are detected setting the issue number and new string for upload to the remote repository
-	void onUploadChangedCheckedOrderingReturn(QVariantMap comment);
+	void onUploadChangedCheckedOrderingReturn(QVariantMap fileContents);
 	/// Handles changing the activeChanged() status when changes are successfully uploaded
-	void onUploadChangesReturned(bool updated, QVariantMap comment);
+	void onUploadChangesReturned(bool updated, QVariantMap fileContents);
 
 	/// Handles the return from the github manager with the success state of the newly created issue
 	void onCreateNewIssueReturned(bool issueCreatedSuccessfully, QVariantMap newIssue);
