@@ -4,6 +4,8 @@
 
 #include "LYGithubProductBacklogStatusLog.h"
 
+#include <QDebug>
+
 LYGithubManager::LYGithubManager(QObject *parent) :
 	QObject(parent)
 {
@@ -225,6 +227,10 @@ void LYGithubManager::editSingleComment(int commentId, const QString &newComment
 	QJson::Serializer jserializer;
 	QByteArray jsonData = jserializer.serialize(jdata);
 
+	qDebug() << "jdata: " << jdata;
+	qDebug() << "commentURL: " << commentURL;
+	qDebug() << "\n\n\n";
+
 	QBuffer *buffer = new QBuffer;
 	buffer->setData(jsonData);
 	buffer->open(QIODevice::ReadOnly);
@@ -292,6 +298,79 @@ void LYGithubManager::closeIssue(int issueNumber){
 	buffer->setParent(closeIssueReply_);
 
 	connect(closeIssueReply_, SIGNAL(readyRead()), this, SLOT(onCloseIssueReturned()));
+}
+
+void LYGithubManager::getBlob(const QString &sha){
+	if(!isAuthenticated() || repository_.isEmpty() || getBlobReply_)
+		return;
+
+	LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Starting getBlob request");
+
+	QNetworkRequest request;
+
+	QString blobURL = QString("https://api.github.com/repos/%1/git/blobs/%2").arg(repository_).arg(sha);
+	request.setUrl(QUrl(blobURL));
+
+	QString userInfo = userName_+":"+password_;
+	QByteArray userData = userInfo.toLocal8Bit().toBase64();
+	QString headerData = "Basic " + userData;
+	request.setRawHeader("Authorization", headerData.toLocal8Bit());
+
+	getBlobReply_ = manager_->get(request);
+	connect(getBlobReply_, SIGNAL(readyRead()), this, SLOT(onGetBlobReturned()));
+}
+
+void LYGithubManager::getFileContents(const QString &path){
+	if(!isAuthenticated() || repository_.isEmpty() || getFileContentsReply_)
+		return;
+
+	LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Starting getFileContents request");
+
+	QNetworkRequest request;
+
+	QString fileContentsURL = QString("https://api.github.com/repos/%1/contents/%2").arg(repository_).arg(path);
+	request.setUrl(QUrl(fileContentsURL));
+
+	QString userInfo = userName_+":"+password_;
+	QByteArray userData = userInfo.toLocal8Bit().toBase64();
+	QString headerData = "Basic " + userData;
+	request.setRawHeader("Authorization", headerData.toLocal8Bit());
+
+	getFileContentsReply_ = manager_->get(request);
+	connect(getFileContentsReply_, SIGNAL(readyRead()), this, SLOT(onGetFileContentsReturned()));
+}
+
+void LYGithubManager::updateFileContents(const QString &path, const QString &commitMessage, const QString &contents, const QString &sha){
+	if(!isAuthenticated() || repository_.isEmpty() || updateFileContentsReply_)
+		return;
+
+	LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Starting updateFileContents request");
+
+	QNetworkRequest request;
+
+	QString updateFileContentsURL = QString("https://api.github.com/repos/%1/contents/%2").arg(repository_).arg(path);
+	request.setUrl(QUrl(updateFileContentsURL));
+
+	QString userInfo = userName_+":"+password_;
+	QByteArray userData = userInfo.toLocal8Bit().toBase64();
+	QString headerData = "Basic " + userData;
+	request.setRawHeader("Authorization", headerData.toLocal8Bit());
+
+	QVariantMap jdata;
+	jdata["message"] = commitMessage;
+	QByteArray encodedContent = contents.toLocal8Bit().toBase64();
+	jdata["content"] = encodedContent;
+	jdata["sha"] = sha;
+	QJson::Serializer jserializer;
+	QByteArray jsonData = jserializer.serialize(jdata);
+
+	QBuffer *buffer = new QBuffer;
+	buffer->setData(jsonData);
+	buffer->open(QIODevice::ReadOnly);
+	updateFileContentsReply_ = manager_->sendCustomRequest(request, "PUT", buffer);
+	buffer->setParent(updateFileContentsReply_);
+
+	connect(updateFileContentsReply_, SIGNAL(readyRead()), this, SLOT(onUpdateFileContentsReturned()));
 }
 
 void LYGithubManager::onAuthenicatedRequestReturned(){
@@ -444,6 +523,8 @@ void LYGithubManager::onEditSingleCommentReturned(){
 	if(githubFullReply.canConvert(QVariant::Map)){
 		doEmit = true;
 		retVal = githubFullReply.toMap();
+
+		qDebug() << "retVal: " << retVal;
 	}
 	disconnect(editSingleCommentReply_, 0);
 	editSingleCommentReply_->deleteLater();
@@ -492,6 +573,72 @@ void LYGithubManager::onCloseIssueReturned(){
 	emit issueClosed(retVal, retMap);
 }
 
+void LYGithubManager::onGetBlobReturned(){
+	QJson::Parser parser;
+	QVariant githubFullReply = parser.parse(getBlobReply_->readAll());
+	bool doEmit = false;
+	QVariantMap retVal;
+	if(githubFullReply.canConvert(QVariant::Map)){
+		doEmit = true;
+		retVal = githubFullReply.toMap();
+	}
+	disconnect(getBlobReply_, 0);
+	getBlobReply_->deleteLater();
+	getBlobReply_ = 0;
+	if(doEmit){
+		LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Processed getBlob request");
+		QString rawReplyContent = retVal.value("content").toString();
+		QString decodedReplyContect = QByteArray::fromBase64(rawReplyContent.toLocal8Bit());
+		qDebug() << "Blob is " << rawReplyContent << "\n\n" << decodedReplyContect;
+		emit blobReturned(retVal);
+	}
+	else
+		LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Something went wrong with getBlob request");
+}
+
+void LYGithubManager::onGetFileContentsReturned(){
+	QJson::Parser parser;
+	QVariant githubFullReply = parser.parse(getFileContentsReply_->readAll());
+	bool doEmit = false;
+	QVariantMap retVal;
+	if(githubFullReply.canConvert(QVariant::Map)){
+		doEmit = true;
+		retVal = githubFullReply.toMap();
+	}
+	disconnect(getFileContentsReply_, 0);
+	getFileContentsReply_->deleteLater();
+	getFileContentsReply_ = 0;
+	if(doEmit){
+		LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Processed getFileContents request");
+		emit fileContentsReturned(retVal);
+	}
+	else
+		LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Something went wrong with getFileContents request");
+
+}
+
+void LYGithubManager::onUpdateFileContentsReturned(){
+	QJson::Parser parser;
+	bool retVal = false;
+	QVariantMap retMap;
+	qDebug() << "UpdateFileContents reply header: " << updateFileContentsReply_->rawHeader("Status");
+	if(updateFileContentsReply_->rawHeader("Status") == "200 OK")
+		retVal = true;
+
+	QVariant githubFullReply = parser.parse(updateFileContentsReply_->readAll());
+	if(githubFullReply.canConvert(QVariant::Map))
+		retMap = githubFullReply.toMap();
+
+	disconnect(updateFileContentsReply_, 0);
+	updateFileContentsReply_->deleteLater();
+	updateFileContentsReply_ = 0;
+	if(retVal)
+		LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Processed updateFileContents request");
+	else
+		LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage("Something went wrong with updateFileContents request");
+	emit fileContentsUpdated(retVal, retMap);
+}
+
 void LYGithubManager::onSomeErrorOccured(QNetworkReply::NetworkError nError){
 	LYGithubProductBacklogStatusLog::statusLog()->appendStatusMessage(QString("Some error occurred %1").arg(nError));
 }
@@ -509,6 +656,9 @@ void LYGithubManager::initialize(){
 	editSingleCommentReply_ = 0;
 	createNewIssueReply_ = 0;
 	closeIssueReply_ = 0;
+	getBlobReply_ = 0;
+	getFileContentsReply_ = 0;
+	updateFileContentsReply_ = 0;
 	authenticated_ = false;
 }
 

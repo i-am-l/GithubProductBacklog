@@ -64,6 +64,12 @@ public slots:
 	void createNewIssue(const QString &title, const QString &body, const QString &assignee = QString());
 	/// Slot that closes an issue with the given \param issue number
 	void closeIssue(int issueNumber);
+	/// Slot that gets a blob of git data from the repository based on the SHA1
+	void getBlob(const QString &sha);
+	/// Slot that gets the contents of a file in the repository
+	void getFileContents(const QString &path);
+	/// Slot that updates the contents of a file in the repository
+	void updateFileContents(const QString &path, const QString &commitMessage, const QString &contents, const QString &sha);
 
 signals:
 	/// Notifier that indicates whether we successfully authenticated with Github or not.
@@ -80,6 +86,12 @@ signals:
 	void issueCreated(bool issueCreated, QVariantMap newIssue);
 	/// Notifier whether or not an issue was successfully closed.
 	void issueClosed(bool issueClosed, QVariantMap closedIssue);
+	/// Notifier that contains the requested blob
+	void blobReturned(QVariantMap blobData);
+	/// Notifier that contains the requested file contents
+	void fileContentsReturned(QVariantMap fileContents);
+	/// Notifier whether or not file contents were successfully updated
+	void fileContentsUpdated(bool contentsUpdated, QVariantMap fileContents);
 
 protected slots:
 	/// Slot handling the authentication response.
@@ -96,6 +108,12 @@ protected slots:
 	void onCreateNewIssueReturned();
 	/// Slot handling the reponse when closing an issue
 	void onCloseIssueReturned();
+	/// Slot handling the response when requesting a blob
+	void onGetBlobReturned();
+	/// Slot handling the response when requesting file contents
+	void onGetFileContentsReturned();
+	/// Slot handling the response when updating file contents
+	void onUpdateFileContentsReturned();
 
 	/// Just adds the error to the status log
 	void onSomeErrorOccured(QNetworkReply::NetworkError nError);
@@ -134,6 +152,14 @@ protected:
 	QNetworkReply *createNewIssueReply_;
 	/// Pointer specifically focusing on the closing of an existing issue  network reply.
 	QNetworkReply *closeIssueReply_;
+
+	/// Pointer specifically focusing on the get blob reply
+	QNetworkReply *getBlobReply_;
+
+	/// Pointer specifically focusing on the get file contents reply
+	QNetworkReply *getFileContentsReply_;
+	/// Pointer specifically focusing on the update file contents reply
+	QNetworkReply *updateFileContentsReply_;
 
 	/// Holds the user name used for connecting to Github.
 	QString userName_;

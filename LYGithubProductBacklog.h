@@ -77,6 +77,9 @@ protected slots:
 	/// Handles the return of the product backlog populating request (get all open issues)
 	void onPopulateProductBacklogReturned(QList<QVariantMap> issues);
 
+	/// Handles the return of the product backlog ordering request (get the file directly)
+	void onPopulateProductBacklogGetFileContentsReturned(QVariantMap fileContents);
+
 	/// Handles the return of the product backlog ordering request (find the ordering issue)
 	void onPopulateProductBacklogOrderingFindIssueReturned(QList<QVariantMap> issues);
 	/// Handles the return of the product backlog ordering request (get the ordering comment from the ordering issue)
@@ -87,7 +90,7 @@ protected slots:
 	/// Handles checking for server side changes that may have taken place and if none are detected setting the issue number and new string for upload to the remote repository
 	void onUploadChangedCheckedOrderingReturn(QVariantMap comment);
 	/// Handles changing the activeChanged() status when changes are successfully uploaded
-	void onUploadChangesReturned(QVariantMap comment);
+	void onUploadChangesReturned(bool updated, QVariantMap comment);
 
 	/// Handles the return from the github manager with the success state of the newly created issue
 	void onCreateNewIssueReturned(bool issueCreatedSuccessfully, QVariantMap newIssue);
@@ -129,6 +132,9 @@ protected:
 	QList<QVariantMap> closedIssues_;
 	/// Id of the comment that holds the product backlog ordering information
 	int ordingInformationCommentId_;
+
+	/// Holds the current ordering file SHA for comparison and lookup
+	QString orderingInformationSHA_;
 
 	/// Holds whether or not there are local model changes that need to be uploaded to the remote repository
 	bool activeChanges_;
